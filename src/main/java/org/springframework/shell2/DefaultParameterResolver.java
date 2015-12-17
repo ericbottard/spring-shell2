@@ -195,7 +195,7 @@ class DefaultParameterResolver implements ParameterResolver {
 				return p;
 			}
 		}
-		throw new IllegalArgumentException(String.format("Could not lookup parameter for '%s%s' in %s", prefix, key, method));
+		throw new IllegalArgumentException(String.format("Could not look up parameter for '%s%s' in %s", prefix, key, method));
 	}
 
 	private static class CacheKey {

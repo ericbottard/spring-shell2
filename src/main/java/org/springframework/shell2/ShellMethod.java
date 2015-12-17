@@ -7,7 +7,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Used to mark a method a invokable via Spring Shell.
+ * Used to mark a method as invokable via Spring Shell.
  *
  * @author Eric Bottard
  * @author Florent Biville
