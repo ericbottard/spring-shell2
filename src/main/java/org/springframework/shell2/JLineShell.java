@@ -1,5 +1,7 @@
 package org.springframework.shell2;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -91,7 +93,7 @@ public class JLineShell {
 	}
 
 
-	public void run() {
+	public void run() throws IOException {
 		while (true) {
 			lineReader.readLine("shell:>");
 			String separator = "";
@@ -140,6 +142,12 @@ public class JLineShell {
 				Object result = null;
 				try {
 					result = ReflectionUtils.invokeMethod(methodTarget.getMethod(), methodTarget.getBean(), rawArgs);
+				}
+				catch (ExitRequest e) {
+					if (applicationContext instanceof Closeable) {
+						((Closeable)applicationContext).close();
+						System.exit(e.status());
+					}
 				}
 				catch (Exception e) {
 					result = e;
