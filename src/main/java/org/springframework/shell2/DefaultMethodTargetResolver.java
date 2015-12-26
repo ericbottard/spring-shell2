@@ -22,8 +22,8 @@ public class DefaultMethodTargetResolver implements MethodTargetResolver {
 			ReflectionUtils.doWithMethods(clazz, method -> {
 				ShellMethod shellMapping = method.getAnnotation(ShellMethod.class);
 				String[] keys = shellMapping.value();
-				if (keys.length == 1 && "".equals(keys[0])) {
-					keys[0] = method.getName();
+				if (keys.length == 0) {
+					keys = new String[] {method.getName()};
 				}
 				for (String key : keys) {
 					methodTargets.put(key, new MethodTarget(method, bean, shellMapping.help()));
