@@ -29,7 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.MethodParameter;
-import org.springframework.core.convert.ConversionService;
+import org.springframework.shell2.result.ResultHandlers;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
@@ -40,12 +40,10 @@ import org.springframework.util.ReflectionUtils;
 public class JLineShell {
 
 	@Autowired
-	private ApplicationContext applicationContext;
+	private ResultHandlers resultHandlers;
 
 	@Autowired
-	private ConversionService conversionService;
-
-	private Map<String, Object> commandBeans;
+	private ApplicationContext applicationContext;
 
 	private Map<String, MethodTarget> methodTargets = new HashMap<>();
 
@@ -145,7 +143,7 @@ public class JLineShell {
 					result = e;
 				}
 
-				System.out.println(String.valueOf(result));
+				resultHandlers.handleResult(result);
 
 			}
 			else {
@@ -153,4 +151,5 @@ public class JLineShell {
 			}
 		}
 	}
+
 }
