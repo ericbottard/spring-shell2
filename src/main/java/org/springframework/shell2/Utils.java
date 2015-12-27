@@ -16,6 +16,11 @@
 
 package org.springframework.shell2;
 
+import java.lang.reflect.Method;
+
+import org.springframework.core.DefaultParameterNameDiscoverer;
+import org.springframework.core.MethodParameter;
+
 /**
  * Some text utilities.
  *
@@ -40,4 +45,12 @@ public class Utils {
 		return result.toString();
 	}
 
+	/**
+	 * Return a properly initialized MethodParameter for the given method and index.
+	 */
+	public static MethodParameter createMethodParameter(Method method, int i) {
+		MethodParameter methodParameter = new MethodParameter(method, i);
+		methodParameter.initParameterNameDiscovery(new DefaultParameterNameDiscoverer());
+		return methodParameter;
+	}
 }

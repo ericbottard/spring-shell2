@@ -41,6 +41,7 @@ import org.springframework.shell2.Shell;
 import org.springframework.shell2.ShellComponent;
 import org.springframework.shell2.ShellMethod;
 import org.springframework.shell2.ShellOption;
+import org.springframework.shell2.Utils;
 
 /**
  * A command to display help about all available commands.
@@ -205,7 +206,7 @@ public class Help {
 		List<ParameterDescription> parameterDescriptions = new ArrayList<>();
 		for (int i = 0, parametersLength = parameters.length; i < parametersLength; i++) {
 			for (ParameterResolver parameterResolver : parameterResolvers) {
-				MethodParameter methodParameter = new MethodParameter(methodTarget.getMethod(), i);
+				MethodParameter methodParameter = Utils.createMethodParameter(methodTarget.getMethod(), i);
 				if (parameterResolver.supports(methodParameter)) {
 					parameterDescriptions.add(parameterResolver.describe(methodParameter));
 					break;

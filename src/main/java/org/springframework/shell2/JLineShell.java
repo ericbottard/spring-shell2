@@ -46,7 +46,6 @@ import org.jline.utils.AttributedStyle;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.MethodParameter;
 import org.springframework.shell2.result.ResultHandlers;
 import org.springframework.stereotype.Component;
@@ -73,6 +72,11 @@ public class JLineShell implements Shell {
 
 	@Autowired
 	private List<ParameterResolver> parameterResolvers = new ArrayList<>();
+
+	/**
+	 * Marker object to distinguish unresolved arguments from {@code null}, which is a valid value.
+	 */
+	private static final Object UNRESOLVED = new Object();
 
 	@Override
 	public Map<String, MethodTarget> listCommands() {
@@ -139,36 +143,15 @@ public class JLineShell implements Shell {
 			// TODO investigate trailing empty string in e.g. "help 'WTF 2'"
 			words = words.stream().filter(w -> w.length() > 0).collect(Collectors.toList());
 			if (methodTarget != null) {
-				Parameter[] parameters = methodTarget.getMethod().getParameters();
-				Object[] rawArgs = new Object[parameters.length];
-				Object unresolved = new Object();
-				Arrays.fill(rawArgs, unresolved);
-				for (int i = 0; i < parameters.length; i++) {
-					MethodParameter methodParameter = new MethodParameter(methodTarget.getMethod(), i);
-					methodParameter.initParameterNameDiscovery(new DefaultParameterNameDiscoverer());
-					for (ParameterResolver resolver : parameterResolvers) {
-						if (resolver.supports(methodParameter)) {
-							rawArgs[i] = resolver.resolve(methodParameter, words.subList(wordsUsedForCommandKey, words.size()));
-							break;
-						}
-					}
-					if (rawArgs[i] == unresolved) {
-						throw new IllegalStateException("Could not resolve " + methodParameter);
-					}
-				}
+				List<String> wordsForArgs = words.subList(wordsUsedForCommandKey, words.size());
 
-				ExecutableValidator executableValidator = Validation
-						.buildDefaultValidatorFactory().getValidator().forExecutables();
-				Set<ConstraintViolation<Object>> constraintViolations = executableValidator.validateParameters(methodTarget.getBean(),
-						methodTarget.getMethod(),
-						rawArgs);
-				if (constraintViolations.size() > 0) {
-					System.out.println(constraintViolations);
-				}
+				Object[] args = resolveArgs(methodTarget, wordsForArgs);
+
 
 				Object result = null;
 				try {
-					result = ReflectionUtils.invokeMethod(methodTarget.getMethod(), methodTarget.getBean(), rawArgs);
+					validateArgs(args, methodTarget);
+					result = ReflectionUtils.invokeMethod(methodTarget.getMethod(), methodTarget.getBean(), args);
 				}
 				catch (ExitRequest e) {
 					if (applicationContext instanceof Closeable) {
@@ -187,6 +170,36 @@ public class JLineShell implements Shell {
 				System.out.println("No command found for " + words);
 			}
 		}
+	}
+
+	private void validateArgs(Object[] args, MethodTarget methodTarget) {
+		ExecutableValidator executableValidator = Validation
+				.buildDefaultValidatorFactory().getValidator().forExecutables();
+		Set<ConstraintViolation<Object>> constraintViolations = executableValidator.validateParameters(methodTarget.getBean(),
+				methodTarget.getMethod(),
+				args);
+		if (constraintViolations.size() > 0) {
+			System.out.println(constraintViolations);
+		}
+	}
+
+	private Object[] resolveArgs(MethodTarget methodTarget, List<String> wordsForArgs) {
+		Parameter[] parameters = methodTarget.getMethod().getParameters();
+		Object[] args = new Object[parameters.length];
+		Arrays.fill(args, UNRESOLVED);
+		for (int i = 0; i < parameters.length; i++) {
+			MethodParameter methodParameter = Utils.createMethodParameter(methodTarget.getMethod(), i);
+			for (ParameterResolver resolver : parameterResolvers) {
+				if (resolver.supports(methodParameter)) {
+					args[i] = resolver.resolve(methodParameter, wordsForArgs);
+					break;
+				}
+			}
+			if (args[i] == UNRESOLVED) {
+				throw new IllegalStateException("Could not resolve " + methodParameter);
+			}
+		}
+		return args;
 	}
 
 	/**

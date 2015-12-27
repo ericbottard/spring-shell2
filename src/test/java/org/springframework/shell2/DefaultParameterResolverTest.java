@@ -16,18 +16,17 @@
 
 package org.springframework.shell2;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.springframework.core.DefaultParameterNameDiscoverer;
-import org.springframework.core.MethodParameter;
-import org.springframework.core.convert.support.DefaultConversionService;
-
-import java.lang.reflect.Method;
-
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.util.ReflectionUtils.findMethod;
+
+import java.lang.reflect.Method;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+
+import org.springframework.core.convert.support.DefaultConversionService;
 
 /**
  * Unit tests for DefaultParameterResolver.
@@ -47,19 +46,19 @@ public class DefaultParameterResolverTest {
 		Method method = findMethod(Remote.class, "zap", boolean.class, String.class, String.class, String.class);
 
 		assertThat(resolver.resolve(
-				makeMethodParameter(method, 0),
+				Utils.createMethodParameter(method, 0),
 				asList("--force --name --foo y".split(" "))
 		)).isEqualTo(true);
 		assertThat(resolver.resolve(
-				makeMethodParameter(method, 1),
+				Utils.createMethodParameter(method, 1),
 				asList("--force --name --foo y".split(" "))
 		)).isEqualTo("--foo");
 		assertThat(resolver.resolve(
-				makeMethodParameter(method, 2),
+				Utils.createMethodParameter(method, 2),
 				asList("--force --name --foo y".split(" "))
 		)).isEqualTo("y");
 		assertThat(resolver.resolve(
-				makeMethodParameter(method, 3),
+				Utils.createMethodParameter(method, 3),
 				asList("--force --name --foo y".split(" "))
 		)).isEqualTo("last");
 
@@ -73,7 +72,7 @@ public class DefaultParameterResolverTest {
 		thrown.expectMessage("Named parameter has been specified multiple times via '--bar, --baz'");
 
 		resolver.resolve(
-				makeMethodParameter(method, 0),
+				Utils.createMethodParameter(method, 0),
 				asList("--force --name --foo y --bar x --baz z".split(" "))
 		);
 	}
@@ -86,7 +85,7 @@ public class DefaultParameterResolverTest {
 		thrown.expectMessage("Parameter for '--baz' has already been specified");
 
 		resolver.resolve(
-				makeMethodParameter(method, 0),
+				Utils.createMethodParameter(method, 0),
 				asList("--force --name --foo y --baz x --baz z".split(" "))
 		);
 	}
@@ -99,7 +98,7 @@ public class DefaultParameterResolverTest {
 		thrown.expectMessage("Could not look up parameter for '--unknown' in " + method);
 
 		resolver.resolve(
-				makeMethodParameter(method, 0),
+				Utils.createMethodParameter(method, 0),
 				asList("--unknown --foo bar".split(" "))
 		);
 	}
@@ -112,16 +111,9 @@ public class DefaultParameterResolverTest {
 		thrown.expectMessage("the following could not be mapped to parameters: 'leftover'");
 
 		resolver.resolve(
-				makeMethodParameter(method, 0),
+				Utils.createMethodParameter(method, 0),
 				asList("--foo hello --name bar --force --bar well leftover".split(" "))
 		);
 	}
-
-	private MethodParameter makeMethodParameter(Method method, int parameterIndex) {
-		MethodParameter methodParameter = new MethodParameter(method, parameterIndex);
-		methodParameter.initParameterNameDiscovery(new DefaultParameterNameDiscoverer());
-		return methodParameter;
-	}
-
 
 }

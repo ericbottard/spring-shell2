@@ -32,7 +32,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
@@ -255,8 +254,7 @@ public class DefaultParameterResolver implements ParameterResolver {
 			return Arrays.asList(option.value());
 		}
 		else {
-			MethodParameter methodParameter = new MethodParameter(method, index);
-			methodParameter.initParameterNameDiscovery(new DefaultParameterNameDiscoverer());
+			MethodParameter methodParameter = Utils.createMethodParameter(method, index);
 			String parameterName = methodParameter.getParameterName();
 			Assert.notNull(parameterName, String.format(
 					"Could not discover parameter name at index %d for %s, and option key(s) were not specified via %s annotation",
