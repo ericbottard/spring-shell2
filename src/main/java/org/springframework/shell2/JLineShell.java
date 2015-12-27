@@ -88,14 +88,7 @@ public class JLineShell implements Shell {
 		LineReaderBuilder lineReaderBuilder = LineReaderBuilder.builder()
 				.terminal(terminal)
 				.appName("Foo")
-				.completer(new Completer() {
-
-					@Override
-					public void complete(LineReader reader, ParsedLine line, List<Candidate> candidates) {
-						candidates.add(new Candidate("value", "displayed value", "v", "the description", null, null, false));
-						candidates.add(new Candidate("value1", "displayed value1", "v", "the description of v1", null, null, false));
-					}
-				})
+				.completer(new CompleterAdapter())
 				.highlighter(new Highlighter() {
 
 					@Override
@@ -196,4 +189,44 @@ public class JLineShell implements Shell {
 		}
 	}
 
+	/**
+	 * A bridge between JLine's {@link Completer} contract and our own.
+	 * @author Eric Bottard
+	 */
+	private class CompleterAdapter implements Completer {
+
+		@Override
+		public void complete(LineReader reader, ParsedLine line, List<Candidate> candidates) {
+			String prefix = reader.getBuffer().upToCursor();
+
+			String best = methodTargets.keySet().stream()
+					.filter(c -> prefix.startsWith(c))
+					.reduce("", (c1, c2) -> c1.length() > c2.length() ? c1 : c2);
+			if (best.equals("")) { // no command found
+				List<Candidate> result = commandsStartingWith(prefix);
+				candidates.addAll(result);
+				return;
+			} // trying to complete args for command <best>,
+			// or trying to complete command whose name starts with <best> (which also happens to be a command)
+			else {
+				if (prefix.equals(best)) {
+					candidates.addAll(commandsStartingWith(best));
+				}
+
+				MethodTarget methodTarget = methodTargets.get(best);
+
+			}
+		}
+
+		private List<Candidate> commandsStartingWith(String prefix) {
+			return methodTargets.entrySet().stream()
+								.filter(e -> e.getKey().startsWith(prefix)) // find commands that start with our buffer prefix
+								.map(e -> toCandidate(e.getKey(), e.getValue()))
+								.collect(Collectors.toList());
+		}
+
+		private Candidate toCandidate(String command, MethodTarget methodTarget) {
+			return new Candidate(command, command, "Available commands", methodTarget.getHelp(), null, null, true);
+		}
+	}
 }
