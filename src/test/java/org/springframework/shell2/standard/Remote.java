@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.shell2;
+package org.springframework.shell2.standard;
 
 /**
  * An example commands class.
@@ -22,7 +22,7 @@ package org.springframework.shell2;
  * @author Eric Bottard
  * @author Florent Biville
  */
-public class Remote {
+class Remote {
 
 	/**
 	 * A command method that showcases<ul>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.shell2;
+package org.springframework.shell2.standard;
 
 import static org.springframework.shell2.Utils.unCamelify;
 
@@ -35,14 +35,18 @@ import java.util.stream.Collectors;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
+import org.springframework.shell2.ParameterDescription;
+import org.springframework.shell2.ParameterResolutionException;
+import org.springframework.shell2.ParameterResolver;
+import org.springframework.shell2.Utils;
 import org.springframework.util.Assert;
 import org.springframework.util.ConcurrentReferenceHashMap;
 
 /**
  * Default ParameterResolver implementation that supports the following features:<ul>
- * <li>named parameters (recognized because they start with some {@link ShellMethod#prefix()}</li>
+ * <li>named parameters (recognized because they start with some {@link ShellMethod#prefix()})</li>
  * <li>implicit named parameters (from the actual method parameter name)</li>
- * <li>positional parameters (in order, for all parameter values that were not resolved via named parameters)</li>
+ * <li>positional parameters (in order, for all parameter values that were not resolved <i>via</i> named parameters)</li>
  * <li>default values (for all remaining parameters)</li>
  * </ul>
  *
@@ -57,10 +61,11 @@ import org.springframework.util.ConcurrentReferenceHashMap;
  * Both
  * the default arity of 0 and the default value of {@code false} can be overridden <i>via</i> {@link ShellOption}
  * if needed.</p>
+ *
  * @author Eric Bottard
  * @author Florent Biville
  */
-public class DefaultParameterResolver implements ParameterResolver {
+public class StandardParameterResolver implements ParameterResolver {
 
 	private final ConversionService conversionService;
 
@@ -71,7 +76,7 @@ public class DefaultParameterResolver implements ParameterResolver {
 	 */
 	private final Map<CacheKey, Map<Parameter, String>> parameterCache = new ConcurrentReferenceHashMap<>();
 
-	public DefaultParameterResolver(ConversionService conversionService) {
+	public StandardParameterResolver(ConversionService conversionService) {
 		this.conversionService = conversionService;
 	}
 
@@ -133,7 +138,9 @@ public class DefaultParameterResolver implements ParameterResolver {
 					} // No more input. Try defaultValues
 					else {
 						Optional<String> defaultValue = defaultValueFor(parameter);
-						String value = defaultValue.orElseThrow(() -> new RuntimeException(String.format("Ran out of input for " + keys)));
+						int index = i;
+						String value = defaultValue
+								.orElseThrow(() -> new ParameterResolutionException(describe(Utils.createMethodParameter(methodParameter.getMethod(), index))));
 						result.put(parameter, value);
 					}
 				}

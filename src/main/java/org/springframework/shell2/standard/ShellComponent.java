@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.shell2;
+package org.springframework.shell2.standard;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -30,6 +30,7 @@ import org.springframework.stereotype.Component;
  * methods that may be invoked reflectively by the shell.
  *
  * <p>This annotation is a specialization of {@link Component}.</p>
+ *
  * @author Eric Bottard
  * @see Component
  */

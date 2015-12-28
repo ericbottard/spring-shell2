@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.shell2;
+package org.springframework.shell2.standard;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -24,6 +24,7 @@ import java.lang.annotation.Target;
 
 /**
  * Used to mark a method as invokable via Spring Shell.
+ *
  * @author Eric Bottard
  * @author Florent Biville
  */

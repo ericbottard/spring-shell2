@@ -16,27 +16,23 @@
 
 package org.springframework.shell2;
 
-import org.springframework.shell2.standard.ShellComponent;
-import org.springframework.shell2.standard.ShellMethod;
-
 /**
- * Created by ericbottard on 27/12/15.
+ * Thrown by a {@link ParameterResolver} when
  */
-@ShellComponent("")
-public class Commands {
+public class ParameterResolutionException extends RuntimeException {
 
-	@ShellMethod(help = "it's cool")
-	public void foo(String bar) {
+	private final ParameterDescription parameterDescription;
 
+	public ParameterResolutionException(ParameterDescription parameterDescription) {
+		this.parameterDescription = parameterDescription;
 	}
 
-	@ShellMethod(help = "it's better")
-	public void foobar() {
-
+	public ParameterDescription getParameterDescription() {
+		return parameterDescription;
 	}
 
-	@ShellMethod(help = "something else")
-	public void somethingElse() {
-
+	@Override
+	public String getMessage() {
+		return String.format("Parameter '%s' should be specified", parameterDescription);
 	}
 }

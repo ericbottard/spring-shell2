@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.shell2;
+package org.springframework.shell2.standard;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import org.springframework.core.convert.support.DefaultConversionService;
+import org.springframework.shell2.Utils;
 
 /**
  * Unit tests for DefaultParameterResolver.
@@ -34,12 +35,12 @@ import org.springframework.core.convert.support.DefaultConversionService;
  * @author Eric Bottard
  * @author Florent Biville
  */
-public class DefaultParameterResolverTest {
+public class StandardParameterResolverTest {
 
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private DefaultParameterResolver resolver = new DefaultParameterResolver(new DefaultConversionService());
+	private StandardParameterResolver resolver = new StandardParameterResolver(new DefaultConversionService());
 
 	@Test
 	public void testParses() throws Exception {

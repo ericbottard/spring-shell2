@@ -14,20 +14,26 @@
  * limitations under the License.
  */
 
-package org.springframework.shell2;
+package org.springframework.shell2.standard;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.context.ApplicationContext;
+import org.springframework.shell2.MethodTarget;
+import org.springframework.shell2.MethodTargetResolver;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
 /**
- * Created by ericbottard on 09/12/15.
+ * The standard implementation of {@link MethodTargetResolver} for new shell applications,
+ * resolves methods annotated with {@link ShellMethod} on {@link ShellComponent} beans.
+ *
+ * @author Eric Bottard
+ * @author Florent Biville
  */
 @Component
-public class DefaultMethodTargetResolver implements MethodTargetResolver {
+public class StandardMethodTargetResolver implements MethodTargetResolver {
 
 	@Override
 	public Map<String, MethodTarget> resolve(ApplicationContext applicationContext) {

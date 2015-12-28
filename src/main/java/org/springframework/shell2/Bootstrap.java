@@ -32,6 +32,7 @@ import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.shell.converters.ArrayConverter;
 import org.springframework.shell.converters.AvailableCommandsConverter;
 import org.springframework.shell.converters.SimpleFileConverter;
+import org.springframework.shell2.standard.StandardParameterResolver;
 
 /**
  */
@@ -53,7 +54,7 @@ public class Bootstrap {
 
 	@Bean
 	public ParameterResolver parameterResolver(ConversionService conversionService) {
-		return new DefaultParameterResolver(conversionService);
+		return new StandardParameterResolver(conversionService);
 	}
 
 	@Bean

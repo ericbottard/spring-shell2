@@ -35,13 +35,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.shell2.DefaultParameterResolver;
+import org.springframework.shell2.standard.StandardParameterResolver;
 import org.springframework.shell2.MethodTarget;
 import org.springframework.shell2.ParameterResolver;
 import org.springframework.shell2.Shell;
-import org.springframework.shell2.ShellComponent;
-import org.springframework.shell2.ShellMethod;
-import org.springframework.shell2.ShellOption;
+import org.springframework.shell2.standard.ShellComponent;
+import org.springframework.shell2.standard.ShellMethod;
+import org.springframework.shell2.standard.ShellOption;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.util.FileCopyUtils;
@@ -116,7 +116,7 @@ public class HelpTest {
 
 		@Bean
 		public ParameterResolver parameterResolver() {
-			return new DefaultParameterResolver(new DefaultConversionService());
+			return new StandardParameterResolver(new DefaultConversionService());
 		}
 
 		@Bean

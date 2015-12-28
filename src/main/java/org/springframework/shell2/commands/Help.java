@@ -38,9 +38,9 @@ import org.springframework.shell2.MethodTarget;
 import org.springframework.shell2.ParameterDescription;
 import org.springframework.shell2.ParameterResolver;
 import org.springframework.shell2.Shell;
-import org.springframework.shell2.ShellComponent;
-import org.springframework.shell2.ShellMethod;
-import org.springframework.shell2.ShellOption;
+import org.springframework.shell2.standard.ShellComponent;
+import org.springframework.shell2.standard.ShellMethod;
+import org.springframework.shell2.standard.ShellOption;
 import org.springframework.shell2.Utils;
 
 /**
@@ -124,7 +124,9 @@ public class Help {
 		result.append("\n\n");
 
 		// OPTIONS
-		result.append("OPTIONS", AttributedStyle.BOLD).append("\n");
+		if (!parameterDescriptions.isEmpty()) {
+			result.append("OPTIONS", AttributedStyle.BOLD).append("\n");
+		}
 		for (ParameterDescription description : parameterDescriptions) {
 			result.append("\t").append(description.keys().stream().collect(Collectors.joining(" or ")), AttributedStyle.BOLD);
 			if (description.formal().length() > 0) {
