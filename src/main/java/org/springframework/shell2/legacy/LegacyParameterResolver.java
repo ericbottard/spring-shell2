@@ -81,6 +81,11 @@ public class LegacyParameterResolver implements ParameterResolver {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
+	public List<String> complete(MethodParameter parameter, List<String> words) {
+		return null;
+	}
+
 	private Map<String, String> parseOptions(List<String> words) {
 		Map<String, String> values = new HashMap<>();
 		for (int i = 0; i < words.size(); i++) {

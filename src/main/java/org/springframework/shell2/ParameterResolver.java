@@ -31,4 +31,6 @@ public interface ParameterResolver {
 
 	ParameterDescription describe(MethodParameter parameter);
 
+	List<String> complete(MethodParameter parameter, List<String> words);
+
 }

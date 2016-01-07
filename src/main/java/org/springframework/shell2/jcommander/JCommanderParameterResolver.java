@@ -81,4 +81,9 @@ public class JCommanderParameterResolver implements ParameterResolver {
 	public ParameterDescription describe(MethodParameter parameter) {
 		throw new UnsupportedOperationException();
 	}
+
+	@Override
+	public List<String> complete(MethodParameter parameter, List<String> words) {
+		return null;
+	}
 }

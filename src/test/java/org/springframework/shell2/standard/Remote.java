@@ -38,4 +38,9 @@ class Remote {
 	                @ShellOption(value = {"bar", "baz"}, defaultValue = "last") String bar) {
 
 	}
+
+	@ShellMethod
+	public void shutdown(@ShellOption String delay) {
+
+	}
 }

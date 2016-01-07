@@ -39,4 +39,9 @@ public class Commands {
 	public void somethingElse() {
 
 	}
+
+	@ShellMethod(help = "add stuff")
+	public int add(int ahbahdisdonc, int b, int c) {
+		return ahbahdisdonc + b + c;
+	}
 }

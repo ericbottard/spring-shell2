@@ -74,7 +74,7 @@ public class StandardParameterResolver implements ParameterResolver {
 	 * Note that the converted result is not cached, to allow dynamic computation to happen at every invocation
 	 * if needed (e.g. if a remote service is involved).
 	 */
-	private final Map<CacheKey, Map<Parameter, String>> parameterCache = new ConcurrentReferenceHashMap<>();
+	private final Map<CacheKey, Map<Parameter, ParameterRawValue>> parameterCache = new ConcurrentReferenceHashMap<>();
 
 	public StandardParameterResolver(ConversionService conversionService) {
 		this.conversionService = conversionService;
@@ -90,9 +90,9 @@ public class StandardParameterResolver implements ParameterResolver {
 		String prefix = prefixForMethod(methodParameter);
 
 		CacheKey cacheKey = new CacheKey(methodParameter.getMethod(), words);
-		Map<Parameter, String> resolved = parameterCache.computeIfAbsent(cacheKey, (k) -> {
+		Map<Parameter, ParameterRawValue> resolved = parameterCache.computeIfAbsent(cacheKey, (k) -> {
 
-			Map<Parameter, String> result = new HashMap<>();
+			Map<Parameter, ParameterRawValue> result = new HashMap<>();
 			Map<String, String> namedParameters = new HashMap<>();
 			List<String> positionalValues = new ArrayList<>();
 
@@ -104,15 +104,16 @@ public class StandardParameterResolver implements ParameterResolver {
 					Parameter parameter = lookupParameterForKey(methodParameter.getMethod(), key, prefix);
 					int arity = getArity(parameter);
 
+					Assert.isTrue(i + 1 + arity <= words.size(), String.format("Not enough input for parameter '%s'", word));
 					String raw = words.subList(i + 1, i + 1 + arity).stream().collect(Collectors.joining(","));
 					Assert.isTrue(!namedParameters.containsKey(key), String.format("Parameter for '%s' has already been specified", word));
 					namedParameters.put(key, raw);
-					result.put(parameter, raw);
+					result.put(parameter, ParameterRawValue.explicit(raw));
 					i += arity;
 					if (arity == 0) {
 						boolean defaultValue = booleanDefaultValue(parameter);
 						// Boolean parameter has been specified. Use the opposite of the default value
-						result.put(parameter, String.valueOf(!defaultValue));
+						result.put(parameter, ParameterRawValue.explicit(String.valueOf(!defaultValue)));
 					}
 				} // store for later processing of positional params
 				else {
@@ -133,15 +134,12 @@ public class StandardParameterResolver implements ParameterResolver {
 					int arity = getArity(parameter);
 					if (offset < positionalValues.size() && (offset + arity) <= positionalValues.size()) {
 						String raw = positionalValues.subList(offset, offset + arity).stream().collect(Collectors.joining(","));
-						result.put(parameter, raw);
+						result.put(parameter, ParameterRawValue.explicit(raw));
 						offset += arity;
 					} // No more input. Try defaultValues
 					else {
 						Optional<String> defaultValue = defaultValueFor(parameter);
-						int index = i;
-						String value = defaultValue
-								.orElseThrow(() -> new ParameterResolutionException(describe(Utils.createMethodParameter(methodParameter.getMethod(), index))));
-						result.put(parameter, value);
+						defaultValue.ifPresent(value -> result.put(parameter, ParameterRawValue.implicit(value)));
 					}
 				}
 				else if (copy.size() > 1) {
@@ -154,7 +152,11 @@ public class StandardParameterResolver implements ParameterResolver {
 			return result;
 		});
 
-		String s = resolved.get(methodParameter.getMethod().getParameters()[methodParameter.getParameterIndex()]);
+		Parameter param = methodParameter.getMethod().getParameters()[methodParameter.getParameterIndex()];
+		if (!resolved.containsKey(param)) {
+			throw new ParameterResolutionException(describe(methodParameter));
+		}
+		String s = resolved.get(param).value;
 		if (ShellOption.NULL.equals(s)) {
 			return null;
 		}
@@ -205,6 +207,27 @@ public class StandardParameterResolver implements ParameterResolver {
 				.mandatoryKey(false);
 
 		return result;
+	}
+
+	@Override
+	public List<String> complete(MethodParameter methodParameter, List<String> words) {
+		boolean set;
+		try {
+			resolve(methodParameter, words);
+			CacheKey cacheKey = new CacheKey(methodParameter.getMethod(), words);
+			Parameter parameter = methodParameter.getMethod().getParameters()[methodParameter.getParameterIndex()];
+			set = parameterCache.get(cacheKey).get(parameter).explicit;
+		}
+		catch (ParameterResolutionException e) {
+			set = false;
+		}
+
+
+		if (!set) {
+			return Collections.singletonList(describe(methodParameter).keys().iterator().next());
+		} else {
+			return Collections.emptyList();
+		}
 	}
 
 	/**
@@ -309,4 +332,24 @@ public class StandardParameterResolver implements ParameterResolver {
 			return Objects.hash(method, words);
 		}
 	}
+
+	private static class ParameterRawValue {
+
+		private final String value;
+		private final boolean explicit;
+
+		private ParameterRawValue(String value, boolean explicit) {
+			this.value = value;
+			this.explicit = explicit;
+		}
+
+		public static ParameterRawValue explicit(String value) {
+			return new ParameterRawValue(value, true);
+		}
+
+		public static ParameterRawValue implicit(String value) {
+			return new ParameterRawValue(value, false);
+		}
+	}
+
 }

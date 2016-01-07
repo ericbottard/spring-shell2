@@ -196,7 +196,8 @@ public class JLineShell implements Shell {
 	 * @param method       the method for which parameters should be computed
 	 * @param wordsForArgs the list of 'words' that should be converted to parameter values.
 	 *                     May include markers for passing parameters 'by name'
-	 * @return an array containing resolved parameter values, or {@link #UNRESOLVED} for parameters that could not be resolved
+	 * @return an array containing resolved parameter values, or {@link #UNRESOLVED} for parameters that could not be
+	 * resolved
 	 */
 	private Object[] resolveArgs(Method method, List<String> wordsForArgs) {
 		Parameter[] parameters = method.getParameters();
@@ -204,14 +205,16 @@ public class JLineShell implements Shell {
 		Arrays.fill(args, UNRESOLVED);
 		for (int i = 0; i < parameters.length; i++) {
 			MethodParameter methodParameter = Utils.createMethodParameter(method, i);
-			for (ParameterResolver resolver : parameterResolvers) {
-				if (resolver.supports(methodParameter)) {
-					args[i] = resolver.resolve(methodParameter, wordsForArgs);
-					break;
-				}
-			}
+			args[i] = findResolver(methodParameter).resolve(methodParameter, wordsForArgs);
 		}
 		return args;
+	}
+
+	private ParameterResolver findResolver(MethodParameter parameter) {
+		return parameterResolvers.stream()
+				.filter(resolver -> resolver.supports(parameter))
+				.findFirst()
+				.orElseThrow(() -> new RuntimeException("resolver not found"));
 	}
 
 	/**
@@ -233,12 +236,29 @@ public class JLineShell implements Shell {
 				return;
 			} // trying to complete args for command <best>,
 			// or trying to complete command whose name starts with <best> (which also happens to be a command)
-			else {
-				if (prefix.equals(best)) {
-					candidates.addAll(commandsStartingWith(best));
-				}
+			else if (prefix.equals(best)) {
+				candidates.addAll(commandsStartingWith(best));
+				return;
+			} // valid command (<best>) followed by a suffix (but not necessarily [<space> args*])
+			else if (!prefix.startsWith(best + " ")) {
+				// must be an invalid command, can't do anything
+				return;
+			}
 
-				MethodTarget methodTarget = methodTargets.get(best);
+			MethodTarget methodTarget = methodTargets.get(best);
+			List<String> words = line.words();
+			List<String> rest = words.subList(best.split(" ").length, words.size())
+					.stream()
+					.filter(w -> !w.isEmpty())
+					.collect(Collectors.toList());
+			Method method = methodTarget.getMethod();
+			for (int i = 0; i < method.getParameterCount(); i++) {
+				final int position = i;
+				MethodParameter methodParameter = Utils.createMethodParameter(method, i);
+				findResolver(methodParameter).complete(methodParameter, rest)
+						.stream()
+						.map(completion -> new Candidate(completion, completion, "Comp for " + position, "toto", null, null, true))
+						.forEach(candidates::add);
 			}
 		}
 

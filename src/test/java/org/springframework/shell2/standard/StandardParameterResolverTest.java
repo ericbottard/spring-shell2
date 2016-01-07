@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import org.springframework.core.convert.support.DefaultConversionService;
+import org.springframework.shell2.ParameterResolutionException;
 import org.springframework.shell2.Utils;
 
 /**
@@ -117,4 +118,30 @@ public class StandardParameterResolverTest {
 		);
 	}
 
+	@Test
+	public void testIncompleteCommandResolution() throws Exception {
+		Method method = findMethod(Remote.class, "shutdown", String.class);
+
+		thrown.expect(IllegalArgumentException.class);
+		thrown.expectMessage("Not enough input for parameter '--delay'");
+
+		resolver.resolve(
+				Utils.createMethodParameter(method, 0),
+				asList("--delay".split(" "))
+		);
+	}
+
+	@Test
+	public void testUnresolvableArg() throws Exception {
+		Method method = findMethod(Remote.class, "zap", boolean.class, String.class, String.class, String.class);
+
+		thrown.expect(ParameterResolutionException.class);
+		thrown.expectMessage("Parameter '--name string' should be specified");
+
+		resolver.resolve(
+				Utils.createMethodParameter(method, 1),
+				asList("--foo hello --force --bar well".split(" "))
+		);
+
+	}
 }
