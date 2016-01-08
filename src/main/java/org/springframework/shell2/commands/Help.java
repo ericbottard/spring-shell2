@@ -68,7 +68,7 @@ public class Help {
 	@ShellMethod(help = "Display help about available commands.", prefix = "-")
 	public CharSequence help(
 			@ShellOption(defaultValue = ShellOption.NULL,
-					value = {"C", "-command"},
+					value = {"-C", "--command"},
 					help = "The command to obtain help for.") String command) throws IOException {
 		if (command == null) {
 			return listCommands();

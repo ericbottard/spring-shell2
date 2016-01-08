@@ -30,7 +30,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.core.convert.ConversionService;
@@ -46,7 +48,8 @@ import org.springframework.util.ConcurrentReferenceHashMap;
  * Default ParameterResolver implementation that supports the following features:<ul>
  * <li>named parameters (recognized because they start with some {@link ShellMethod#prefix()})</li>
  * <li>implicit named parameters (from the actual method parameter name)</li>
- * <li>positional parameters (in order, for all parameter values that were not resolved <i>via</i> named parameters)</li>
+ * <li>positional parameters (in order, for all parameter values that were not resolved <i>via</i> named
+ * parameters)</li>
  * <li>default values (for all remaining parameters)</li>
  * </ul>
  *
@@ -61,7 +64,6 @@ import org.springframework.util.ConcurrentReferenceHashMap;
  * Both
  * the default arity of 0 and the default value of {@code false} can be overridden <i>via</i> {@link ShellOption}
  * if needed.</p>
- *
  * @author Eric Bottard
  * @author Florent Biville
  */
@@ -96,11 +98,13 @@ public class StandardParameterResolver implements ParameterResolver {
 			Map<String, String> namedParameters = new HashMap<>();
 			List<String> positionalValues = new ArrayList<>();
 
+			Set<String> possibleKeys = gatherAllPossibleKeys(methodParameter.getMethod());
+
 			// First, resolve all parameters passed by-name
 			for (int i = 0; i < words.size(); i++) {
 				String word = words.get(i);
-				if (word.startsWith(prefix)) {
-					String key = word.substring(prefix.length());
+				if (possibleKeys.contains(word)) {
+					String key = word;
 					Parameter parameter = lookupParameterForKey(methodParameter.getMethod(), key, prefix);
 					int arity = getArity(parameter);
 
@@ -127,12 +131,12 @@ public class StandardParameterResolver implements ParameterResolver {
 			for (int i = 0, parametersLength = parameters.length; i < parametersLength; i++) {
 				Parameter parameter = parameters[i];
 				// Compute the intersection between possible keys for the param and what we've already seen for named params
-				Collection<String> keys = getKeysForParameter(methodParameter.getMethod(), i);
+				Collection<String> keys = getKeysForParameter(methodParameter.getMethod(), i).collect(Collectors.toSet());
 				Collection<String> copy = new HashSet<>(keys);
 				copy.retainAll(namedParameters.keySet());
 				if (copy.isEmpty()) { // Was not set via a key (including aliases), must be positional
 					int arity = getArity(parameter);
-					if (offset < positionalValues.size() && (offset + arity) <= positionalValues.size()) {
+					if (arity > 0 && (offset + arity) <= positionalValues.size()) {
 						String raw = positionalValues.subList(offset, offset + arity).stream().collect(Collectors.joining(","));
 						result.put(parameter, ParameterRawValue.explicit(raw));
 						offset += arity;
@@ -143,7 +147,7 @@ public class StandardParameterResolver implements ParameterResolver {
 					}
 				}
 				else if (copy.size() > 1) {
-					throw new IllegalArgumentException("Named parameter has been specified multiple times via " + prefix(copy, prefix));
+					throw new IllegalArgumentException("Named parameter has been specified multiple times via " + quote(copy));
 				}
 			}
 
@@ -165,6 +169,20 @@ public class StandardParameterResolver implements ParameterResolver {
 		}
 	}
 
+	private Set<String> gatherAllPossibleKeys(Method method) {
+		final String prefix = "--";
+		return Arrays.stream(method.getParameters())
+				.flatMap(p -> {
+					ShellOption option = p.getAnnotation(ShellOption.class);
+					if (option != null && option.value().length > 0) {
+						return Arrays.stream(option.value());
+					}
+					else {
+						return Stream.of(prefix + Utils.createMethodParameter(p).getParameterName());
+					}
+				}).collect(Collectors.toSet());
+	}
+
 	private String prefixForMethod(MethodParameter methodParameter) {
 		return methodParameter.getMethod().getAnnotation(ShellMethod.class).prefix();
 	}
@@ -174,8 +192,18 @@ public class StandardParameterResolver implements ParameterResolver {
 		ShellOption option = parameter.getAnnotation(ShellOption.class);
 		if (option != null && !ShellOption.NONE.equals(option.defaultValue())) {
 			defaultValue = Optional.of(option.defaultValue());
+		} else if (option == null && getArity(parameter) == 0) {
+			return Optional.of("false");
 		}
 		return defaultValue;
+	}
+
+	private boolean booleanDefaultValue(Parameter parameter) {
+		ShellOption option = parameter.getAnnotation(ShellOption.class);
+		if (option != null && !ShellOption.NULL.equals(option.defaultValue())) {
+			return Boolean.parseBoolean(option.defaultValue());
+		}
+		return false;
 	}
 
 	@Override
@@ -200,10 +228,9 @@ public class StandardParameterResolver implements ParameterResolver {
 				result.defaultValue(defaultValue.map(dv -> dv.equals(ShellOption.NULL) ? "<none>" : dv).get());
 			}
 		}
-		List<String> rawKeys = getKeysForParameter(parameter.getMethod(), parameter.getParameterIndex());
-		String prefix = prefixForMethod(parameter);
 		result
-				.keys(rawKeys.stream().map(k -> prefix + k).collect(Collectors.toList()))
+				.keys(getKeysForParameter(parameter.getMethod(), parameter.getParameterIndex())
+						.collect(Collectors.toList()))
 				.mandatoryKey(false);
 
 		return result;
@@ -225,7 +252,8 @@ public class StandardParameterResolver implements ParameterResolver {
 
 		if (!set) {
 			return Collections.singletonList(describe(methodParameter).keys().iterator().next());
-		} else {
+		}
+		else {
 			return Collections.emptyList();
 		}
 	}
@@ -247,18 +275,10 @@ public class StandardParameterResolver implements ParameterResolver {
 	}
 
 	/**
-	 * Add the command prefix back to the list of keys that was used to invoke the method.
+	 * Surrounds the parameter keys with quotes.
 	 */
-	private String prefix(Collection<String> keys, String prefix) {
-		return keys.stream().map(k -> prefix + k).collect(Collectors.joining(", ", "'", "'"));
-	}
-
-	private boolean booleanDefaultValue(Parameter parameter) {
-		ShellOption option = parameter.getAnnotation(ShellOption.class);
-		if (option != null && !ShellOption.NULL.equals(option.defaultValue())) {
-			return Boolean.parseBoolean(option.defaultValue());
-		}
-		return false;
+	private String quote(Collection<String> keys) {
+		return keys.stream().collect(Collectors.joining(", ", "'", "'"));
 	}
 
 	/**
@@ -275,21 +295,16 @@ public class StandardParameterResolver implements ParameterResolver {
 	 * Return the key(s) the i-th parameter of the command method, resolved either from the {@link ShellOption}
 	 * annotation,
 	 * or from the actual parameter name.
-	 * @throws IllegalArgumentException if parameter names could not be extracted
 	 */
-	private List<String> getKeysForParameter(Method method, int index) {
-		Parameter parameter = method.getParameters()[index];
-		ShellOption option = parameter.getAnnotation(ShellOption.class);
+	private Stream<String> getKeysForParameter(Method method, int index) {
+		String prefix = "--";
+		Parameter p = method.getParameters()[index];
+		ShellOption option = p.getAnnotation(ShellOption.class);
 		if (option != null && option.value().length > 0) {
-			return Arrays.asList(option.value());
+			return Arrays.stream(option.value());
 		}
 		else {
-			MethodParameter methodParameter = Utils.createMethodParameter(method, index);
-			String parameterName = methodParameter.getParameterName();
-			Assert.notNull(parameterName, String.format(
-					"Could not discover parameter name at index %d for %s, and option key(s) were not specified via %s annotation",
-					index, method, ShellOption.class.getSimpleName()));
-			return Collections.singletonList(parameterName);
+			return Stream.of(prefix + Utils.createMethodParameter(p).getParameterName());
 		}
 	}
 
@@ -300,7 +315,7 @@ public class StandardParameterResolver implements ParameterResolver {
 		Parameter[] parameters = method.getParameters();
 		for (int i = 0, parametersLength = parameters.length; i < parametersLength; i++) {
 			Parameter p = parameters[i];
-			if (getKeysForParameter(method, i).contains(key)) {
+			if (getKeysForParameter(method, i).anyMatch(k -> k.equals(key))) {
 				return p;
 			}
 		}
@@ -336,6 +351,7 @@ public class StandardParameterResolver implements ParameterResolver {
 	private static class ParameterRawValue {
 
 		private final String value;
+
 		private final boolean explicit;
 
 		private ParameterRawValue(String value, boolean explicit) {

@@ -35,7 +35,7 @@ class Remote {
 	public void zap(boolean force,
 	                String name,
 	                @ShellOption(defaultValue="defoolt") String foo,
-	                @ShellOption(value = {"bar", "baz"}, defaultValue = "last") String bar) {
+	                @ShellOption(value = {"--bar", "--baz"}, defaultValue = "last") String bar) {
 
 	}
 

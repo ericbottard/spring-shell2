@@ -93,19 +93,6 @@ public class StandardParameterResolverTest {
 	}
 
 	@Test
-	public void testUnknownParameter() throws Exception {
-		Method method = findMethod(Remote.class, "zap", boolean.class, String.class, String.class, String.class);
-
-		thrown.expect(IllegalArgumentException.class);
-		thrown.expectMessage("Could not look up parameter for '--unknown' in " + method);
-
-		resolver.resolve(
-				Utils.createMethodParameter(method, 0),
-				asList("--unknown --foo bar".split(" "))
-		);
-	}
-
-	@Test
 	public void testTooMuchInput() throws Exception {
 		Method method = findMethod(Remote.class, "zap", boolean.class, String.class, String.class, String.class);
 
