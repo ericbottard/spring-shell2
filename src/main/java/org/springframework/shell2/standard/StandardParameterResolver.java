@@ -37,9 +37,11 @@ import java.util.stream.Stream;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
+import org.springframework.shell2.CompletionContext;
 import org.springframework.shell2.ParameterDescription;
-import org.springframework.shell2.ParameterResolutionException;
+import org.springframework.shell2.ParameterMissingResolutionException;
 import org.springframework.shell2.ParameterResolver;
+import org.springframework.shell2.UnfinishedParameterResolutionException;
 import org.springframework.shell2.Utils;
 import org.springframework.util.Assert;
 import org.springframework.util.ConcurrentReferenceHashMap;
@@ -108,16 +110,20 @@ public class StandardParameterResolver implements ParameterResolver {
 					Parameter parameter = lookupParameterForKey(methodParameter.getMethod(), key, prefix);
 					int arity = getArity(parameter);
 
+					if (i + 1 + arity > words.size()) {
+						String input = words.subList(i, words.size()).stream().collect(Collectors.joining(" "));
+						throw new UnfinishedParameterResolutionException(describe(Utils.createMethodParameter(parameter)), input);
+					}
 					Assert.isTrue(i + 1 + arity <= words.size(), String.format("Not enough input for parameter '%s'", word));
 					String raw = words.subList(i + 1, i + 1 + arity).stream().collect(Collectors.joining(","));
 					Assert.isTrue(!namedParameters.containsKey(key), String.format("Parameter for '%s' has already been specified", word));
 					namedParameters.put(key, raw);
-					result.put(parameter, ParameterRawValue.explicit(raw));
+					result.put(parameter, ParameterRawValue.explicit(raw, key));
 					i += arity;
 					if (arity == 0) {
 						boolean defaultValue = booleanDefaultValue(parameter);
 						// Boolean parameter has been specified. Use the opposite of the default value
-						result.put(parameter, ParameterRawValue.explicit(String.valueOf(!defaultValue)));
+						result.put(parameter, ParameterRawValue.explicit(String.valueOf(!defaultValue), key));
 					}
 				} // store for later processing of positional params
 				else {
@@ -138,12 +144,12 @@ public class StandardParameterResolver implements ParameterResolver {
 					int arity = getArity(parameter);
 					if (arity > 0 && (offset + arity) <= positionalValues.size()) {
 						String raw = positionalValues.subList(offset, offset + arity).stream().collect(Collectors.joining(","));
-						result.put(parameter, ParameterRawValue.explicit(raw));
+						result.put(parameter, ParameterRawValue.explicit(raw, null));
 						offset += arity;
 					} // No more input. Try defaultValues
 					else {
 						Optional<String> defaultValue = defaultValueFor(parameter);
-						defaultValue.ifPresent(value -> result.put(parameter, ParameterRawValue.implicit(value)));
+						defaultValue.ifPresent(value -> result.put(parameter, ParameterRawValue.implicit(value, null)));
 					}
 				}
 				else if (copy.size() > 1) {
@@ -158,7 +164,7 @@ public class StandardParameterResolver implements ParameterResolver {
 
 		Parameter param = methodParameter.getMethod().getParameters()[methodParameter.getParameterIndex()];
 		if (!resolved.containsKey(param)) {
-			throw new ParameterResolutionException(describe(methodParameter));
+			throw new ParameterMissingResolutionException(describe(methodParameter));
 		}
 		String s = resolved.get(param).value;
 		if (ShellOption.NULL.equals(s)) {
@@ -192,7 +198,8 @@ public class StandardParameterResolver implements ParameterResolver {
 		ShellOption option = parameter.getAnnotation(ShellOption.class);
 		if (option != null && !ShellOption.NONE.equals(option.defaultValue())) {
 			defaultValue = Optional.of(option.defaultValue());
-		} else if (option == null && getArity(parameter) == 0) {
+		}
+		else if (option == null && getArity(parameter) == 0) {
 			return Optional.of("false");
 		}
 		return defaultValue;
@@ -219,7 +226,7 @@ public class StandardParameterResolver implements ParameterResolver {
 			}
 			sb.append(arity > 1 ? unCamelify(removeMultiplicityFromType(parameter).getSimpleName()) : unCamelify(type.getSimpleName()));
 		}
-		ParameterDescription result = ParameterDescription.ofType(type);
+		ParameterDescription result = ParameterDescription.outOf(parameter);
 		result.formal(sb.toString());
 		if (option != null) {
 			result.help(option.help());
@@ -237,25 +244,73 @@ public class StandardParameterResolver implements ParameterResolver {
 	}
 
 	@Override
-	public List<String> complete(MethodParameter methodParameter, List<String> words) {
+	public List<String> complete(MethodParameter methodParameter, CompletionContext context) {
 		boolean set;
+		UnfinishedParameterResolutionException unfinished = null;
+		// First try to see if this parameter has been set, even to some unfinished value
+		ParameterRawValue parameterRawValue = null;
 		try {
-			resolve(methodParameter, words);
-			CacheKey cacheKey = new CacheKey(methodParameter.getMethod(), words);
+			resolve(methodParameter, context.getWords());
+			CacheKey cacheKey = new CacheKey(methodParameter.getMethod(), context.getWords());
 			Parameter parameter = methodParameter.getMethod().getParameters()[methodParameter.getParameterIndex()];
-			set = parameterCache.get(cacheKey).get(parameter).explicit;
+			parameterRawValue = parameterCache.get(cacheKey).get(parameter);
+			set = parameterRawValue.explicit;
 		}
-		catch (ParameterResolutionException e) {
+		catch (ParameterMissingResolutionException e) {
 			set = false;
 		}
-
-
-		if (!set) {
-			return Collections.singletonList(describe(methodParameter).keys().iterator().next());
+		catch (UnfinishedParameterResolutionException e) {
+			unfinished = e;
+			set = false;
 		}
-		else {
+		catch (Exception e) {
+			// Most likely what is already typed would fail resolution (eg type conversion failure)
+			// Exit early and let other parameters have a chance at being proposed
 			return Collections.emptyList();
 		}
+
+		// There are 3 possible cases:
+		// 1) parameter not set at all
+		// 2) parameter set via its key, not enough input to consume a value
+		// 3) parameter set, and some value bound. But maybe that value is just a prefix to what the user actually wants
+		// 3.1) or maybe that value was resolved by position, but is a prefix of an actual valid key
+
+		if (!set) {
+			if (unfinished == null) { // case 1 above
+				return commandsThatStartWithContextPrefix(methodParameter, context);
+			} // case 2
+			else {
+				return valuesThatStartWith("");
+			}
+		}
+		else {
+			List<String> result = new ArrayList<>();
+
+			String prefix = context.currentWordUpToCursor() != null ? context.currentWordUpToCursor() : "";
+			// TODO: should not look at last word only, but everything after what was used for key
+			result.addAll(valuesThatStartWith(prefix));
+
+			if (parameterRawValue.positional()) {
+				// Case 3.1: There exists "--command foo" and user has typed "--comm" which got resolved as a positional param
+				result.addAll(commandsThatStartWithContextPrefix(methodParameter, context));
+			}
+			return result;
+		}
+	}
+
+	private List<String> valuesThatStartWith(String prefix) {
+		// TODO: handle actual value handlers
+		List<String> fakeValues = Arrays.asList("some_value", "'another one'", "12", "some_like_it_hot");
+		return fakeValues.stream()
+				.filter(v -> v.startsWith(prefix))
+				.collect(Collectors.toList());
+	}
+
+	private List<String> commandsThatStartWithContextPrefix(MethodParameter methodParameter, CompletionContext context) {
+		String prefix = context.currentWordUpToCursor() != null ? context.currentWordUpToCursor() : "";
+		return describe(methodParameter).keys().stream()
+				.filter(k -> k.startsWith(prefix))
+				.collect(Collectors.toList());
 	}
 
 	/**
@@ -266,7 +321,7 @@ public class StandardParameterResolver implements ParameterResolver {
 		if (parameterType.isArray()) {
 			return parameterType.getComponentType();
 		}
-		else if (parameterType.isAssignableFrom(Collection.class)) {
+		else if (Collection.class.isAssignableFrom(parameterType)) {
 			return parameter.getNestedParameterType();
 		}
 		else {
@@ -350,21 +405,37 @@ public class StandardParameterResolver implements ParameterResolver {
 
 	private static class ParameterRawValue {
 
+		/**
+		 * The raw String value that got bound to a parameter.
+		 */
 		private final String value;
 
+		/**
+		 * If false, the value resolved is the result of applying defaults.
+		 */
 		private final boolean explicit;
 
-		private ParameterRawValue(String value, boolean explicit) {
+		/**
+		 * The key that was used to set the parameter, or null if resolution happened by position.
+		 */
+		private final String key;
+
+		private ParameterRawValue(String value, boolean explicit, String key) {
 			this.value = value;
 			this.explicit = explicit;
+			this.key = key;
 		}
 
-		public static ParameterRawValue explicit(String value) {
-			return new ParameterRawValue(value, true);
+		public static ParameterRawValue explicit(String value, String key) {
+			return new ParameterRawValue(value, true, key);
 		}
 
-		public static ParameterRawValue implicit(String value) {
-			return new ParameterRawValue(value, false);
+		public static ParameterRawValue implicit(String value, String key) {
+			return new ParameterRawValue(value, false, key);
+		}
+
+		public boolean positional() {
+			return key == null;
 		}
 	}
 

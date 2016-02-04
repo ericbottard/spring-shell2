@@ -29,6 +29,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.core.MethodParameter;
+import org.springframework.shell2.CompletionContext;
 import org.springframework.shell2.ParameterDescription;
 import org.springframework.shell2.ParameterResolver;
 import org.springframework.util.ReflectionUtils;
@@ -83,7 +84,7 @@ public class JCommanderParameterResolver implements ParameterResolver {
 	}
 
 	@Override
-	public List<String> complete(MethodParameter parameter, List<String> words) {
+	public List<String> complete(MethodParameter parameter, CompletionContext context) {
 		return null;
 	}
 }

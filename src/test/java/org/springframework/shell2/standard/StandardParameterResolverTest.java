@@ -21,13 +21,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.util.ReflectionUtils.findMethod;
 
 import java.lang.reflect.Method;
+import java.util.List;
 
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import org.springframework.core.convert.support.DefaultConversionService;
-import org.springframework.shell2.ParameterResolutionException;
+import org.springframework.shell2.ParameterMissingResolutionException;
+import org.springframework.shell2.UnfinishedParameterResolutionException;
 import org.springframework.shell2.Utils;
 
 /**
@@ -109,8 +111,8 @@ public class StandardParameterResolverTest {
 	public void testIncompleteCommandResolution() throws Exception {
 		Method method = findMethod(Remote.class, "shutdown", String.class);
 
-		thrown.expect(IllegalArgumentException.class);
-		thrown.expectMessage("Not enough input for parameter '--delay'");
+		thrown.expect(UnfinishedParameterResolutionException.class);
+		thrown.expectMessage("Error trying to resolve '--delay string' using [--delay]");
 
 		resolver.resolve(
 				Utils.createMethodParameter(method, 0),
@@ -119,10 +121,23 @@ public class StandardParameterResolverTest {
 	}
 
 	@Test
+	public void testIncompleteCommandResolutionBigArity() throws Exception {
+		Method method = findMethod(Remote.class, "add", List.class);
+
+		thrown.expect(UnfinishedParameterResolutionException.class);
+		thrown.expectMessage("Error trying to resolve '--numbers list list list' using [--numbers 1 2]");
+
+		resolver.resolve(
+				Utils.createMethodParameter(method, 0),
+				asList("--numbers 1 2".split(" "))
+		);
+	}
+
+	@Test
 	public void testUnresolvableArg() throws Exception {
 		Method method = findMethod(Remote.class, "zap", boolean.class, String.class, String.class, String.class);
 
-		thrown.expect(ParameterResolutionException.class);
+		thrown.expect(ParameterMissingResolutionException.class);
 		thrown.expectMessage("Parameter '--name string' should be specified");
 
 		resolver.resolve(

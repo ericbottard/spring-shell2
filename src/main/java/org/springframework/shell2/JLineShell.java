@@ -245,19 +245,29 @@ public class JLineShell implements Shell {
 				return;
 			}
 
+			// Try to complete arguments
 			MethodTarget methodTarget = methodTargets.get(best);
 			List<String> words = line.words();
-			List<String> rest = words.subList(best.split(" ").length, words.size())
+			int noOfWordsInCommand = best.split(" ").length;
+			List<String> rest = words.subList(noOfWordsInCommand, words.size())
 					.stream()
 					.filter(w -> !w.isEmpty())
 					.collect(Collectors.toList());
+			CompletionContext context = new CompletionContext(rest, line.wordIndex() - noOfWordsInCommand, line.wordCursor());
 			Method method = methodTarget.getMethod();
 			for (int i = 0; i < method.getParameterCount(); i++) {
 				final int position = i;
 				MethodParameter methodParameter = Utils.createMethodParameter(method, i);
-				findResolver(methodParameter).complete(methodParameter, rest)
+				ParameterResolver resolver = findResolver(methodParameter);
+				resolver.complete(methodParameter, context)
 						.stream()
-						.map(completion -> new Candidate(completion, completion, "Comp for " + position, "toto", null, null, true))
+						.map(completion -> new Candidate(
+										completion,
+										completion,
+										"Comp for " + position,
+										resolver.describe(methodParameter).help(),
+										null, null, true)
+						)
 						.forEach(candidates::add);
 			}
 		}

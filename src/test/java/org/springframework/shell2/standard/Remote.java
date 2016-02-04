@@ -16,6 +16,8 @@
 
 package org.springframework.shell2.standard;
 
+import java.util.List;
+
 /**
  * An example commands class.
  *
@@ -41,6 +43,11 @@ class Remote {
 
 	@ShellMethod
 	public void shutdown(@ShellOption String delay) {
+
+	}
+
+	@ShellMethod
+	public void add(@ShellOption(arity = 3) List<Integer> numbers) {
 
 	}
 }

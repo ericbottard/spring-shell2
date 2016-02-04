@@ -38,6 +38,7 @@
 			<groupId>org.springframework.shell</groupId>
 			<artifactId>spring-shell</artifactId>
 			<version>1.2.0.BUILD-SNAPSHOT</version>
+			<optional>true</optional>
 		</dependency>
 		<dependency>
 			<groupId>com.beust</groupId>

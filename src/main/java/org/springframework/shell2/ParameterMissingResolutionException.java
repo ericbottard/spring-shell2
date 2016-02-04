@@ -17,13 +17,15 @@
 package org.springframework.shell2;
 
 /**
- * Thrown by a {@link ParameterResolver} when
+ * Thrown by a {@link ParameterResolver} when a parameter that should have been set has been left out altogether.
+ *
+ * @author Eric Bottard
  */
-public class ParameterResolutionException extends RuntimeException {
+public class ParameterMissingResolutionException extends RuntimeException {
 
 	private final ParameterDescription parameterDescription;
 
-	public ParameterResolutionException(ParameterDescription parameterDescription) {
+	public ParameterMissingResolutionException(ParameterDescription parameterDescription) {
 		this.parameterDescription = parameterDescription;
 	}
 
