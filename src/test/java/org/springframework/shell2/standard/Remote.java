@@ -24,7 +24,7 @@ import java.util.List;
  * @author Eric Bottard
  * @author Florent Biville
  */
-class Remote {
+public class Remote {
 
 	/**
 	 * A command method that showcases<ul>
@@ -33,7 +33,7 @@ class Remote {
 	 *     <li>default value supplying (foo and bar)</li>
 	 * </ul>
 	 */
-	@ShellMethod
+	@ShellMethod(help = "switch channels")
 	public void zap(boolean force,
 	                String name,
 	                @ShellOption(defaultValue="defoolt") String foo,
@@ -41,12 +41,12 @@ class Remote {
 
 	}
 
-	@ShellMethod
+	@ShellMethod(help = "bye bye")
 	public void shutdown(@ShellOption String delay) {
 
 	}
 
-	@ShellMethod
+	@ShellMethod(help = "add 3 numbers together")
 	public void add(@ShellOption(arity = 3) List<Integer> numbers) {
 
 	}
