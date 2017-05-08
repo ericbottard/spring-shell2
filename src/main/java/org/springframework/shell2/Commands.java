@@ -18,6 +18,7 @@ package org.springframework.shell2;
 
 import org.springframework.shell2.standard.ShellComponent;
 import org.springframework.shell2.standard.ShellMethod;
+import org.springframework.shell2.standard.ShellOption;
 
 /**
  * Created by ericbottard on 27/12/15.
@@ -36,12 +37,18 @@ public class Commands {
 	}
 
 	@ShellMethod(help = "something else")
-	public void somethingElse() {
-
+	public String somethingElse() {
+		return "Else";
 	}
 
 	@ShellMethod(help = "add stuff")
 	public int add(int ahbahdisdonc, int b, int c) {
 		return ahbahdisdonc + b + c;
 	}
+
+	@ShellMethod(value = "auth", help = "Authenticate")
+	public String passwordMethod(String username, @ShellOption(interactive = true, masked = true) String password) {
+		return username + "/" + password;
+	}
+
 }

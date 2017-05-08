@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,13 @@ package org.springframework.shell2;
 import java.util.Map;
 
 /**
- * Created by ericbottard on 17/12/15.
+ * @author Eric Bottard
+ * @author Camilo Gonzalez
  */
 public interface Shell {
 
-
 	public Map<String, MethodTarget> listCommands();
+	
+	public String readLine(String prompt, boolean masked);
 
 }
