@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package org.springframework.shell2.commands;
 
-import org.springframework.shell2.ExitRequest;
+import org.springframework.shell2.result.ExitResult;
 import org.springframework.shell2.standard.ShellComponent;
 import org.springframework.shell2.standard.ShellMethod;
 
@@ -24,12 +24,13 @@ import org.springframework.shell2.standard.ShellMethod;
  * A command that terminates the running shell.
  *
  * @author Eric Bottard
+ * @author Camilo Gonzalez
  */
 @ShellComponent
 public class Quit {
 
 	@ShellMethod(help = "Exit the shell.", value = {"quit", "exit"})
-	public void quit() {
-		throw new ExitRequest();
+	public ExitResult quit() {
+		return new ExitResult();
 	}
 }
