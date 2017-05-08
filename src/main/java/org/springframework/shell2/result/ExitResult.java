@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,27 @@
  * limitations under the License.
  */
 
-package org.springframework.shell2;
+package org.springframework.shell2.result;
 
 /**
- * This exception, when thrown and caught, will ask the shell to gracefully shutdown.
+ * This result will ask the shell to gracefully shutdown.
  *
  * @author Eric Bottard
+ * @author Camilo Gonzalez
  */
-public class ExitRequest extends RuntimeException {
+public class ExitResult {
 
 	private final int code;
 
-	public ExitRequest() {
+	public ExitResult() {
 		this(0);
 	}
 
-	public ExitRequest(int code) {
+	public ExitResult(int code) {
 		this.code = code;
 	}
 
 	public int status() {
-		return 0;
+		return code;
 	}
 }

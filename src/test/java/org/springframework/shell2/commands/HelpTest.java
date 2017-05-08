@@ -35,13 +35,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.shell2.standard.ShellComponent;
+import org.springframework.shell2.standard.ShellMethod;
+import org.springframework.shell2.standard.ShellOption;
 import org.springframework.shell2.standard.StandardParameterResolver;
 import org.springframework.shell2.MethodTarget;
 import org.springframework.shell2.ParameterResolver;
 import org.springframework.shell2.Shell;
-import org.springframework.shell2.standard.ShellComponent;
-import org.springframework.shell2.standard.ShellMethod;
-import org.springframework.shell2.standard.ShellOption;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.util.FileCopyUtils;
@@ -89,28 +89,41 @@ public class HelpTest {
 
 		@Bean
 		public Help help() {
-			return new Help(Collections.singletonList(parameterResolver()));
+			Help helpObject = new Help();
+			helpObject.setParameterResolvers(Collections.singletonList(parameterResolver()));
+			return helpObject;
 		}
 
 		@Bean
 		public Shell shell() {
-			return () -> {
-				Map<String, MethodTarget> result = new HashMap<>();
-				Method method = ReflectionUtils.findMethod(Commands.class, "firstCommand", boolean.class, boolean.class, int.class, float[].class);
-				MethodTarget methodTarget = new MethodTarget(method, commands(), "A rather extensive description of some command.");
-				result.put("first-command", methodTarget);
-				result.put("1st-command", methodTarget);
+			return new Shell() {
+				@Override
+				public String readLine(String prompt, boolean masked) {
+					return null;
+				}
 
-				method = ReflectionUtils.findMethod(Commands.class, "secondCommand");
-				methodTarget = new MethodTarget(method, commands(), "The second command. This one is known under several aliases as well.");
-				result.put("second-command", methodTarget);
-				result.put("yet-another-command", methodTarget);
+				@Override
+				public Map<String, MethodTarget> listCommands() {
+					Map<String, MethodTarget> result = new HashMap<>();
+					Method method = ReflectionUtils.findMethod(Commands.class, "firstCommand", boolean.class,
+							boolean.class, int.class, float[].class);
+					MethodTarget methodTarget = new MethodTarget(method, commands(),
+							"A rather extensive description of some command.");
+					result.put("first-command", methodTarget);
+					result.put("1st-command", methodTarget);
 
-				method = ReflectionUtils.findMethod(Commands.class, "thirdCommand");
-				methodTarget = new MethodTarget(method, commands(), "The last command.");
-				result.put("third-command", methodTarget);
+					method = ReflectionUtils.findMethod(Commands.class, "secondCommand");
+					methodTarget = new MethodTarget(method, commands(),
+							"The second command. This one is known under several aliases as well.");
+					result.put("second-command", methodTarget);
+					result.put("yet-another-command", methodTarget);
 
-				return result;
+					method = ReflectionUtils.findMethod(Commands.class, "thirdCommand");
+					methodTarget = new MethodTarget(method, commands(), "The last command.");
+					result.put("third-command", methodTarget);
+
+					return result;
+				}
 			};
 		}
 

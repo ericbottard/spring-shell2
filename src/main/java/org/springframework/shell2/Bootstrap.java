@@ -20,7 +20,6 @@ import java.io.IOException;
 
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
-
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -32,7 +31,6 @@ import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.shell.converters.ArrayConverter;
 import org.springframework.shell.converters.AvailableCommandsConverter;
 import org.springframework.shell.converters.SimpleFileConverter;
-import org.springframework.shell2.standard.StandardParameterResolver;
 
 /**
  */
@@ -50,11 +48,6 @@ public class Bootstrap {
 	@Bean
 	public ConversionService conversionService() {
 		return new DefaultConversionService();
-	}
-
-	@Bean
-	public ParameterResolver parameterResolver(ConversionService conversionService) {
-		return new StandardParameterResolver(conversionService);
 	}
 
 	@Bean

@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
@@ -43,11 +44,12 @@ import org.springframework.shell2.ParameterMissingResolutionException;
 import org.springframework.shell2.ParameterResolver;
 import org.springframework.shell2.UnfinishedParameterResolutionException;
 import org.springframework.shell2.Utils;
+import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.util.ConcurrentReferenceHashMap;
 
 /**
- * Default ParameterResolver implementation that supports the following features:<ul>
+ * Default {@link ParameterResolver} implementation that supports the following features:<ul>
  * <li>named parameters (recognized because they start with some {@link ShellMethod#prefix()})</li>
  * <li>implicit named parameters (from the actual method parameter name)</li>
  * <li>positional parameters (in order, for all parameter values that were not resolved <i>via</i> named
@@ -69,6 +71,7 @@ import org.springframework.util.ConcurrentReferenceHashMap;
  * @author Eric Bottard
  * @author Florent Biville
  */
+@Component
 public class StandardParameterResolver implements ParameterResolver {
 
 	private final ConversionService conversionService;
@@ -80,12 +83,21 @@ public class StandardParameterResolver implements ParameterResolver {
 	 */
 	private final Map<CacheKey, Map<Parameter, ParameterRawValue>> parameterCache = new ConcurrentReferenceHashMap<>();
 
+	@Autowired
 	public StandardParameterResolver(ConversionService conversionService) {
 		this.conversionService = conversionService;
 	}
 
 	@Override
 	public boolean supports(MethodParameter parameter) {
+		if (!parameter.hasParameterAnnotation(ShellOption.class)) {
+			return true;
+		}
+
+		// this resolver doesn't support interactive parameters
+		if (parameter.getParameterAnnotation(ShellOption.class).interactive()) {
+			return false;
+		}
 		return true;
 	}
 
@@ -94,6 +106,7 @@ public class StandardParameterResolver implements ParameterResolver {
 		String prefix = prefixForMethod(methodParameter);
 
 		CacheKey cacheKey = new CacheKey(methodParameter.getMethod(), words);
+		
 		Map<Parameter, ParameterRawValue> resolved = parameterCache.computeIfAbsent(cacheKey, (k) -> {
 
 			Map<Parameter, ParameterRawValue> result = new HashMap<>();
@@ -110,12 +123,18 @@ public class StandardParameterResolver implements ParameterResolver {
 					Parameter parameter = lookupParameterForKey(methodParameter.getMethod(), key, prefix);
 					int arity = getArity(parameter);
 
-					if (i + 1 + arity > words.size()) {
+					// the starting index of the raw values for the parameter
+					int startIndex = i + 1;
+					
+					// the end index of the raw values which is based on the arity
+					int endIndex = startIndex + arity;
+					
+					if (endIndex > words.size()) {
 						String input = words.subList(i, words.size()).stream().collect(Collectors.joining(" "));
 						throw new UnfinishedParameterResolutionException(describe(Utils.createMethodParameter(parameter)), input);
 					}
-					Assert.isTrue(i + 1 + arity <= words.size(), String.format("Not enough input for parameter '%s'", word));
-					String raw = words.subList(i + 1, i + 1 + arity).stream().collect(Collectors.joining(","));
+					
+					String raw = words.subList(startIndex, endIndex).stream().collect(Collectors.joining(","));
 					Assert.isTrue(!namedParameters.containsKey(key), String.format("Parameter for '%s' has already been specified", word));
 					namedParameters.put(key, raw);
 					result.put(parameter, ParameterRawValue.explicit(raw, key));
@@ -348,8 +367,7 @@ public class StandardParameterResolver implements ParameterResolver {
 
 	/**
 	 * Return the key(s) the i-th parameter of the command method, resolved either from the {@link ShellOption}
-	 * annotation,
-	 * or from the actual parameter name.
+	 * annotation, or from the actual parameter name.
 	 */
 	private Stream<String> getKeysForParameter(Method method, int index) {
 		String prefix = "--";

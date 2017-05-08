@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package org.springframework.shell2;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -44,7 +43,6 @@ import org.jline.terminal.Terminal;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.MethodParameter;
@@ -53,7 +51,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
 /**
- * Created by ericbottard on 26/11/15.
+ * @author Eric Bottard
+ * @author Camilo Gonzalez
  */
 @Component
 public class JLineShell implements Shell {
@@ -78,7 +77,17 @@ public class JLineShell implements Shell {
 	 * Marker object to distinguish unresolved arguments from {@code null}, which is a valid value.
 	 */
 	private static final Object UNRESOLVED = new Object();
-
+	
+	/**
+	 * <p>
+	 * Defines if an empty string/command should be ignored. Defined via the System property spring.shell.ignoreEmpty
+	 * </p>
+	 * <p>
+	 * Mainly for use in IDE consoles where JLine3 terminal issues an extra empty line after every command input.
+	 * </p>
+	 */
+	private boolean ignoreEmptyCommands = Boolean.getBoolean("spring.shell.ignoreEmpty");
+	
 	@Override
 	public Map<String, MethodTarget> listCommands() {
 		return methodTargets;
@@ -87,7 +96,7 @@ public class JLineShell implements Shell {
 	@PostConstruct
 	public void init() throws Exception {
 		for (MethodTargetResolver resolver : applicationContext.getBeansOfType(MethodTargetResolver.class).values()) {
-			methodTargets.putAll(resolver.resolve(applicationContext));
+			methodTargets.putAll(resolver.resolve());
 		}
 
 		LineReaderBuilder lineReaderBuilder = LineReaderBuilder.builder()
@@ -117,7 +126,6 @@ public class JLineShell implements Shell {
 				.parser(new DefaultParser());
 
 		lineReader = lineReaderBuilder.build();
-
 	}
 
 
@@ -154,23 +162,25 @@ public class JLineShell implements Shell {
 					validateArgs(args, methodTarget);
 					result = ReflectionUtils.invokeMethod(method, methodTarget.getBean(), args);
 				}
-				catch (ExitRequest e) {
-					if (applicationContext instanceof Closeable) {
-						((Closeable) applicationContext).close();
-						System.exit(e.status());
-					}
-				}
 				catch (Exception e) {
 					result = e;
 				}
 
 				resultHandlers.handleResult(result);
-
 			}
 			else {
-				System.out.println("No command found for " + words);
+				if(words.isEmpty() && !ignoreEmptyCommands) {
+					System.out.println("No command found for " + words);
+				} else {
+					System.out.println("");
+				}
 			}
 		}
+	}
+	
+	@Override
+	public String readLine(String prompt, boolean masked) {
+		return lineReader.readLine(prompt, masked ? '*' : null);
 	}
 
 	private void validateArgs(Object[] args, MethodTarget methodTarget) {

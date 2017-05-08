@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,11 +36,21 @@ import org.springframework.shell2.UnfinishedParameterResolutionException;
 import org.springframework.shell2.Utils;
 
 /**
- * Unit tests for DefaultParameterResolver.
+ * Unit tests for the {@link StandardParameterResolver}.
+ * 
  * @author Eric Bottard
  * @author Florent Biville
+ * @author Camilo Gonzalez
  */
 public class StandardParameterResolverTest {
+
+	private static final String ADD_METHOD = "add";
+
+	private static final String ZAP_METHOD = "zap";
+	
+	private static final String INTERACTIVE_METHOD = "interactive";
+	
+	private static final String NON_INTERACTIVE_METHOD = "nonInteractive";
 
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
@@ -51,7 +61,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testParses() throws Exception {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "zap", boolean.class, String.class, String.class, String.class);
+		Method method = findMethod(StubShellComponent.class, ZAP_METHOD, boolean.class, String.class, String.class, String.class);
 
 		assertThat(resolver.resolve(
 				Utils.createMethodParameter(method, 0),
@@ -74,7 +84,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testParameterSpecifiedTwiceViaDifferentAliases() throws Exception {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "zap", boolean.class, String.class, String.class, String.class);
+		Method method = findMethod(StubShellComponent.class, ZAP_METHOD, boolean.class, String.class, String.class, String.class);
 
 		thrown.expect(IllegalArgumentException.class);
 		thrown.expectMessage("Named parameter has been specified multiple times via '--bar, --baz'");
@@ -87,7 +97,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testParameterSpecifiedTwiceViaSameKey() throws Exception {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "zap", boolean.class, String.class, String.class, String.class);
+		Method method = findMethod(StubShellComponent.class, ZAP_METHOD, boolean.class, String.class, String.class, String.class);
 
 		thrown.expect(IllegalArgumentException.class);
 		thrown.expectMessage("Parameter for '--baz' has already been specified");
@@ -100,7 +110,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testTooMuchInput() throws Exception {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "zap", boolean.class, String.class, String.class, String.class);
+		Method method = findMethod(StubShellComponent.class, ZAP_METHOD, boolean.class, String.class, String.class, String.class);
 
 		thrown.expect(IllegalArgumentException.class);
 		thrown.expectMessage("the following could not be mapped to parameters: 'leftover'");
@@ -113,7 +123,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testIncompleteCommandResolution() throws Exception {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "shutdown", String.class);
+		Method method = findMethod(StubShellComponent.class, "shutdown", String.class);
 
 		thrown.expect(UnfinishedParameterResolutionException.class);
 		thrown.expectMessage("Error trying to resolve '--delay string' using [--delay]");
@@ -126,7 +136,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testIncompleteCommandResolutionBigArity() throws Exception {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "add", List.class);
+		Method method = findMethod(StubShellComponent.class, ADD_METHOD, List.class);
 
 		thrown.expect(UnfinishedParameterResolutionException.class);
 		thrown.expectMessage("Error trying to resolve '--numbers list list list' using [--numbers 1 2]");
@@ -139,7 +149,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testUnresolvableArg() throws Exception {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "zap", boolean.class, String.class, String.class, String.class);
+		Method method = findMethod(StubShellComponent.class, ZAP_METHOD, boolean.class, String.class, String.class, String.class);
 
 		thrown.expect(ParameterMissingResolutionException.class);
 		thrown.expectMessage("Parameter '--name string' should be specified");
@@ -154,7 +164,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testParameterKeyNotYetSetAppearsInProposals() {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "zap", boolean.class, String.class, String.class, String.class);
+		Method method = findMethod(StubShellComponent.class, ZAP_METHOD, boolean.class, String.class, String.class, String.class);
 		List<String> completions = resolver.complete(
 				Utils.createMethodParameter(method, 1),
 				contextFor("")
@@ -169,7 +179,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testParameterKeyNotFullySpecified() {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "zap", boolean.class, String.class, String.class, String.class);
+		Method method = findMethod(StubShellComponent.class, ZAP_METHOD, boolean.class, String.class, String.class, String.class);
 		List<String> completions = resolver.complete(
 				Utils.createMethodParameter(method, 1),
 				contextFor("--na")
@@ -184,7 +194,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testNoMoreAvailableParameters() {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "zap", boolean.class, String.class, String.class, String.class);
+		Method method = findMethod(StubShellComponent.class, ZAP_METHOD, boolean.class, String.class, String.class, String.class);
 		List<String> completions = resolver.complete(
 				Utils.createMethodParameter(method, 2), // trying to complete --foo
 				contextFor("--name ") // but input is currently focused on --name
@@ -195,7 +205,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testNotTheRightTimeToCompleteThatParameter() {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "shutdown", String.class);
+		Method method = findMethod(StubShellComponent.class, "shutdown", String.class);
 		List<String> completions = resolver.complete(
 				Utils.createMethodParameter(method, 0),
 				contextFor("--delay 323")
@@ -205,7 +215,7 @@ public class StandardParameterResolverTest {
 
 	@Test
 	public void testValueCompletionWithNonDefaultArity() {
-		Method method = findMethod(org.springframework.shell2.standard.Remote2.class, "add", List.class);
+		Method method = findMethod(StubShellComponent.class, ADD_METHOD, List.class);
 		List<String> completions = resolver.complete(
 				Utils.createMethodParameter(method, 0),
 				contextFor("--numbers ")
@@ -230,8 +240,21 @@ public class StandardParameterResolverTest {
 		);
 		assertThat(completions).isEmpty();
 	}
-
-
+	
+	@Test
+	public void testNotSupportedParameter() {
+		Method method = findMethod(StubShellComponent.class, INTERACTIVE_METHOD, String.class);
+		
+		assertThat(resolver.supports(Utils.createMethodParameter(method, 0))).isFalse();
+	}
+	
+	@Test
+	public void testSupportedParameters() {
+		Method method = findMethod(StubShellComponent.class, NON_INTERACTIVE_METHOD, String.class, String.class);
+		
+		assertThat(resolver.supports(Utils.createMethodParameter(method, 0))).isTrue();
+		assertThat(resolver.supports(Utils.createMethodParameter(method, 1))).isTrue();
+	}
 
 	private CompletionContext contextFor(String input) {
 		DefaultParser defaultParser = new DefaultParser();

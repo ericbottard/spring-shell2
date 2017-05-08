@@ -38,10 +38,10 @@ import org.springframework.shell2.MethodTarget;
 import org.springframework.shell2.ParameterDescription;
 import org.springframework.shell2.ParameterResolver;
 import org.springframework.shell2.Shell;
+import org.springframework.shell2.Utils;
 import org.springframework.shell2.standard.ShellComponent;
 import org.springframework.shell2.standard.ShellMethod;
 import org.springframework.shell2.standard.ShellOption;
-import org.springframework.shell2.Utils;
 
 /**
  * A command to display help about all available commands.
@@ -51,12 +51,12 @@ import org.springframework.shell2.Utils;
 @ShellComponent
 public class Help {
 
-	private final List<ParameterResolver> parameterResolvers;
+	private List<ParameterResolver> parameterResolvers;
 
 	private Shell shell;
 
 	@Autowired
-	public Help(List<ParameterResolver> parameterResolvers) {
+	public void setParameterResolvers(List<ParameterResolver> parameterResolvers) {
 		this.parameterResolvers = parameterResolvers;
 	}
 

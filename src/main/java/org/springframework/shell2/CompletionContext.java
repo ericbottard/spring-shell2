@@ -32,7 +32,6 @@ public class CompletionContext {
 
 	private final int position;
 
-
 	public CompletionContext(List<String> words, int wordIndex, int position) {
 		this.words = words;
 		this.wordIndex = wordIndex;

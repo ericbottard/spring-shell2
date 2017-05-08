@@ -19,6 +19,7 @@ package org.springframework.shell2.standard;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.shell2.MethodTarget;
 import org.springframework.shell2.MethodTargetResolver;
@@ -26,17 +27,22 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
 /**
- * The standard implementation of {@link MethodTargetResolver} for new shell applications,
- * resolves methods annotated with {@link ShellMethod} on {@link ShellComponent} beans.
+ * The standard implementation of {@link MethodTargetResolver} for new shell
+ * applications, resolves methods annotated with {@link ShellMethod} on
+ * {@link ShellComponent} beans.
  *
  * @author Eric Bottard
  * @author Florent Biville
+ * @author Camilo Gonzalez
  */
 @Component
 public class StandardMethodTargetResolver implements MethodTargetResolver {
 
+	@Autowired
+	private ApplicationContext applicationContext;
+
 	@Override
-	public Map<String, MethodTarget> resolve(ApplicationContext applicationContext) {
+	public Map<String, MethodTarget> resolve() {
 		Map<String, MethodTarget> methodTargets = new HashMap<>();
 		Map<String, Object> commandBeans = applicationContext.getBeansWithAnnotation(ShellComponent.class);
 		for (Object bean : commandBeans.values()) {
@@ -45,7 +51,7 @@ public class StandardMethodTargetResolver implements MethodTargetResolver {
 				ShellMethod shellMapping = method.getAnnotation(ShellMethod.class);
 				String[] keys = shellMapping.value();
 				if (keys.length == 0) {
-					keys = new String[] {method.getName()};
+					keys = new String[] { method.getName() };
 				}
 				for (String key : keys) {
 					methodTargets.put(key, new MethodTarget(method, bean, shellMapping.help()));

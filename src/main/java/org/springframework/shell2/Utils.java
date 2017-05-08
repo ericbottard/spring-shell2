@@ -60,9 +60,11 @@ public class Utils {
 		}
 		throw new AssertionError("Can't happen");
 	}
+	
 	/**
 	 * Return a properly initialized MethodParameter for the given executable and index.
 	 */
+	@SuppressWarnings("rawtypes")
 	public static MethodParameter createMethodParameter(Executable executable, int i) {
 		MethodParameter methodParameter;
 		if (executable instanceof Method) {
