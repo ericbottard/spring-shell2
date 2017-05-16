@@ -32,6 +32,7 @@ import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.shell.converters.ArrayConverter;
 import org.springframework.shell.converters.AvailableCommandsConverter;
 import org.springframework.shell.converters.SimpleFileConverter;
+import org.springframework.shell2.standard.EnumValueProvider;
 import org.springframework.shell2.standard.StandardParameterResolver;
 
 /**
@@ -62,4 +63,8 @@ public class Bootstrap {
 		return TerminalBuilder.builder().build();
 	}
 
+	@Bean
+	public EnumValueProvider enumValueProvider() {
+		return new EnumValueProvider();
+	}
 }

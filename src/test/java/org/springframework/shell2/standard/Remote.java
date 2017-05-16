@@ -16,7 +16,13 @@
 
 package org.springframework.shell2.standard;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.core.MethodParameter;
+import org.springframework.shell2.CompletionContext;
+import org.springframework.shell2.CompletionProposal;
 
 /**
  * An example commands class.
@@ -42,12 +48,29 @@ public class Remote {
 	}
 
 	@ShellMethod(help = "bye bye")
-	public void shutdown(@ShellOption String delay) {
+	public void shutdown(@ShellOption Delay delay) {
 
 	}
 
 	@ShellMethod(help = "add 3 numbers together")
-	public void add(@ShellOption(arity = 3) List<Integer> numbers) {
+	public void add(@ShellOption(arity = 3, valueProvider = NumberValueProvider.class) List<Integer> numbers) {
 
+	}
+
+	public enum Delay {
+		small, medium, big;
+	}
+
+
+	public static class NumberValueProvider extends ValueProviderSupport {
+
+		@Override
+		public List<CompletionProposal> complete(MethodParameter parameter, CompletionContext completionContext, String[] hints) {
+			String prefix = completionContext.currentWord() != null ? completionContext.currentWord() : "";
+			return Arrays.asList("12", "42", "7").stream()
+					.filter(n -> n.startsWith(prefix))
+					.map(n -> new CompletionProposal(n))
+					.collect(Collectors.toList());
+		}
 	}
 }

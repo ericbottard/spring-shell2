@@ -23,7 +23,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Used to customize handling of a {@link ShellMethod} parameters.
+ * Used to customize handling of a {@link ShellMethod} parameter.
  *
  * @author Eric Bottard
  * @author Florent Biville
@@ -57,4 +57,10 @@ public @interface ShellOption {
 	 * Return a short description of the parameter.
 	 */
 	String help() default "";
+
+	Class<? extends ValueProvider> valueProvider() default NoValueProvider.class;
+
+	interface NoValueProvider extends ValueProvider {
+
+	}
 }

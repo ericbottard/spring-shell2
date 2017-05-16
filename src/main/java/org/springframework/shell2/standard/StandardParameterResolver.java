@@ -34,10 +34,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.shell2.CompletionContext;
+import org.springframework.shell2.CompletionProposal;
 import org.springframework.shell2.ParameterDescription;
 import org.springframework.shell2.ParameterMissingResolutionException;
 import org.springframework.shell2.ParameterResolver;
@@ -73,6 +75,8 @@ public class StandardParameterResolver implements ParameterResolver {
 
 	private final ConversionService conversionService;
 
+	private Collection<ValueProvider> valueProviders = new HashSet<>();
+
 	/**
 	 * A cache from method+input to String representation of actual parameter values.
 	 * Note that the converted result is not cached, to allow dynamic computation to happen at every invocation
@@ -82,6 +86,11 @@ public class StandardParameterResolver implements ParameterResolver {
 
 	public StandardParameterResolver(ConversionService conversionService) {
 		this.conversionService = conversionService;
+	}
+
+	@Autowired(required = false)
+	public void setValueProviders(Collection<ValueProvider> valueProviders) {
+		this.valueProviders = valueProviders;
 	}
 
 	@Override
@@ -244,9 +253,9 @@ public class StandardParameterResolver implements ParameterResolver {
 	}
 
 	@Override
-	public List<String> complete(MethodParameter methodParameter, CompletionContext context) {
+	public List<CompletionProposal> complete(MethodParameter methodParameter, CompletionContext context) {
 		boolean set;
-		UnfinishedParameterResolutionException unfinished = null;
+		Exception unfinished = null;
 		// First try to see if this parameter has been set, even to some unfinished value
 		ParameterRawValue parameterRawValue = null;
 		try {
@@ -259,14 +268,12 @@ public class StandardParameterResolver implements ParameterResolver {
 		catch (ParameterMissingResolutionException e) {
 			set = false;
 		}
-		catch (UnfinishedParameterResolutionException e) {
+		catch (Exception e) {
 			unfinished = e;
 			set = false;
-		}
-		catch (Exception e) {
 			// Most likely what is already typed would fail resolution (eg type conversion failure)
 			// Exit early and let other parameters have a chance at being proposed
-			return Collections.emptyList();
+			//return Collections.emptyList();
 		}
 
 		// There are 3 possible cases:
@@ -280,36 +287,37 @@ public class StandardParameterResolver implements ParameterResolver {
 				return commandsThatStartWithContextPrefix(methodParameter, context);
 			} // case 2
 			else {
-				return valuesThatStartWith("");
+				return valueCompletions(methodParameter, context);
 			}
 		}
 		else {
-			List<String> result = new ArrayList<>();
+			List<CompletionProposal> result = new ArrayList<>();
 
 			String prefix = context.currentWordUpToCursor() != null ? context.currentWordUpToCursor() : "";
 			// TODO: should not look at last word only, but everything after what was used for key
-			result.addAll(valuesThatStartWith(prefix));
+			// Case 3
+			result.addAll(valueCompletions(methodParameter, context));
 
 			if (parameterRawValue.positional()) {
-				// Case 3.1: There exists "--command foo" and user has typed "--comm" which got resolved as a positional param
+				// Case 3.1: There exists "--command foo" and user has typed "--comm" which (wrongly) got resolved as a positional param
 				result.addAll(commandsThatStartWithContextPrefix(methodParameter, context));
 			}
 			return result;
 		}
 	}
 
-	private List<String> valuesThatStartWith(String prefix) {
-		// TODO: handle actual value handlers
-		List<String> fakeValues = Arrays.asList("some_value", "'another one'", "12", "some_like_it_hot");
-		return fakeValues.stream()
-				.filter(v -> v.startsWith(prefix))
-				.collect(Collectors.toList());
+	private List<CompletionProposal> valueCompletions(MethodParameter methodParameter, CompletionContext completionContext) {
+		return valueProviders.stream()
+				.filter(vp -> vp.supports(methodParameter, completionContext))
+				.map(vp -> vp.complete(methodParameter, completionContext, null))
+				.findFirst().orElseGet(() -> Collections.emptyList());
 	}
 
-	private List<String> commandsThatStartWithContextPrefix(MethodParameter methodParameter, CompletionContext context) {
+	private List<CompletionProposal> commandsThatStartWithContextPrefix(MethodParameter methodParameter, CompletionContext context) {
 		String prefix = context.currentWordUpToCursor() != null ? context.currentWordUpToCursor() : "";
 		return describe(methodParameter).keys().stream()
 				.filter(k -> k.startsWith(prefix))
+				.map(v -> new CompletionProposal(v))
 				.collect(Collectors.toList());
 	}
 
@@ -404,6 +412,14 @@ public class StandardParameterResolver implements ParameterResolver {
 	}
 
 	private static class ParameterRawValue {
+
+		private CompletionContext context;
+
+		private int from;
+
+		private int to;
+
+		private Integer keyIndex;
 
 		/**
 		 * The raw String value that got bound to a parameter.

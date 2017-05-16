@@ -256,15 +256,14 @@ public class JLineShell implements Shell {
 			CompletionContext context = new CompletionContext(rest, line.wordIndex() - noOfWordsInCommand, line.wordCursor());
 			Method method = methodTarget.getMethod();
 			for (int i = 0; i < method.getParameterCount(); i++) {
-				final int position = i;
 				MethodParameter methodParameter = Utils.createMethodParameter(method, i);
 				ParameterResolver resolver = findResolver(methodParameter);
 				resolver.complete(methodParameter, context)
 						.stream()
 						.map(completion -> new Candidate(
-										completion,
-										completion,
-										"Comp for " + position,
+										completion.value(),
+										completion.displayText(),
+										"Comp for parameter " + resolver.describe(methodParameter).toString(),
 										resolver.describe(methodParameter).help(),
 										null, null, true)
 						)
