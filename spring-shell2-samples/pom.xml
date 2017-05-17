@@ -8,26 +8,35 @@
 	<parent>
 		<groupId>org.springframework.shell</groupId>
 		<artifactId>spring-shell2-parent</artifactId>
-		<version>${shell2.version}</version>
+		<version>2.0.0-BUILD.SNAPSHOT</version>
 	</parent>
 	
-	<name>Examples of using Spring Shell 2</name>
+	<description>Examples of using Spring Shell 2</description>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<mainClass>org.springframework.shell2.Bootstrap</mainClass>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.shell</groupId>
 			<artifactId>spring-shell2-core</artifactId>
-			<version>${shell2.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.shell</groupId>
 			<artifactId>spring-shell2-shell1-adapter</artifactId>
-			<version>${shell2.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.shell</groupId>
 			<artifactId>spring-shell2-jcommander-adapter</artifactId>
-			<version>${shell2.version}</version>
 		</dependency>
 	</dependencies>
 	
