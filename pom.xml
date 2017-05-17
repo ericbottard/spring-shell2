@@ -4,7 +4,7 @@
 
 	<groupId>org.springframework.shell</groupId>
 	<artifactId>spring-shell2-parent</artifactId>
-	<version>${shell2.version}</version>
+	<version>2.0.0-BUILD.SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<parent>
@@ -14,7 +14,6 @@
 	</parent>
 	
 	<properties>
-		<shell2.version>2.0.0.BUILD-SNAPSHOT</shell2.version>
 		<jline.version>3.3.0</jline.version>
 		<assertj.version>3.2.0</assertj.version>
 		<java.version>1.8</java.version>
@@ -26,6 +25,26 @@
 		<module>spring-shell2-samples</module>
 		<module>spring-shell2-shell1-adapter</module>
 	</modules>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.shell</groupId>
+				<artifactId>spring-shell2-core</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework.shell</groupId>
+				<artifactId>spring-shell2-shell1-adapter</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework.shell</groupId>
+				<artifactId>spring-shell2-jcommander-adapter</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<dependencies>
 		<dependency>
@@ -54,11 +73,15 @@
 	</dependencies>
 
 	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-maven-plugin</artifactId>
+				</plugin>
+			</plugins>		
+		</pluginManagement>
 		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
