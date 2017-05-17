@@ -39,6 +39,7 @@ import org.jline.reader.Highlighter;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.ParsedLine;
+import org.jline.reader.UserInterruptException;
 import org.jline.reader.impl.DefaultParser;
 import org.jline.terminal.Terminal;
 import org.jline.utils.AttributedString;
@@ -123,7 +124,16 @@ public class JLineShell implements Shell {
 
 	public void run() throws IOException {
 		while (true) {
-			lineReader.readLine(new AttributedString("shell:>", AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW)).toAnsi(terminal));
+			try {
+				lineReader.readLine(new AttributedString("shell:>", AttributedStyle.DEFAULT.foreground(AttributedStyle.YELLOW)).toAnsi(terminal));
+			}
+			catch (UserInterruptException e) {
+				if (e.getPartialLine().isEmpty()) {
+					exit(new ExitRequest(1));
+				} else {
+					continue;
+				}
+			}
 			String separator = "";
 			StringBuilder candidateCommand = new StringBuilder();
 			MethodTarget methodTarget = null;
@@ -155,10 +165,7 @@ public class JLineShell implements Shell {
 					result = ReflectionUtils.invokeMethod(method, methodTarget.getBean(), args);
 				}
 				catch (ExitRequest e) {
-					if (applicationContext instanceof Closeable) {
-						((Closeable) applicationContext).close();
-						System.exit(e.status());
-					}
+					exit(e);
 				}
 				catch (Exception e) {
 					result = e;
@@ -170,6 +177,13 @@ public class JLineShell implements Shell {
 			else {
 				System.out.println("No command found for " + words);
 			}
+		}
+	}
+
+	private void exit(ExitRequest e) throws IOException {
+		if (applicationContext instanceof Closeable) {
+			((Closeable) applicationContext).close();
+			System.exit(e.status());
 		}
 	}
 
