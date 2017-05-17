@@ -16,7 +16,6 @@
 
 package org.springframework.shell2;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -49,25 +48,30 @@ import org.jline.utils.AttributedStyle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.MethodParameter;
-import org.springframework.shell2.result.ResultHandlers;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
 /**
- * Created by ericbottard on 26/11/15.
+ * Main component implementing a REPL using JLine.
+ *
+ * <p>Discovers {@link MethodTarget}s at startup and hands off execution of commands according
+ * to the parsed JLine buffer.</p>
+ *
+ * @author Eric Bottard
+ * @author Florent Biville
  */
 @Component
 public class JLineShell implements Shell {
 
 	@Autowired
-	private ResultHandlers resultHandlers;
+	ResultHandlers resultHandlers = new ResultHandlers();
 
 	@Autowired
 	private ApplicationContext applicationContext;
 
 	private Map<String, MethodTarget> methodTargets = new HashMap<>();
 
-	private LineReader lineReader;
+	LineReader lineReader;
 
 	@Autowired
 	private Terminal terminal;
@@ -129,7 +133,7 @@ public class JLineShell implements Shell {
 			}
 			catch (UserInterruptException e) {
 				if (e.getPartialLine().isEmpty()) {
-					exit(new ExitRequest(1));
+					resultHandlers.handleResult(new ExitRequest(1));
 				} else {
 					continue;
 				}
@@ -157,15 +161,11 @@ public class JLineShell implements Shell {
 				List<String> wordsForArgs = words.subList(wordsUsedForCommandKey, words.size());
 				Method method = methodTarget.getMethod();
 
-
 				Object result = null;
 				try {
 					Object[] args = resolveArgs(method, wordsForArgs);
 					validateArgs(args, methodTarget);
 					result = ReflectionUtils.invokeMethod(method, methodTarget.getBean(), args);
-				}
-				catch (ExitRequest e) {
-					exit(e);
 				}
 				catch (Exception e) {
 					result = e;
@@ -177,13 +177,6 @@ public class JLineShell implements Shell {
 			else {
 				System.out.println("No command found for " + words);
 			}
-		}
-	}
-
-	private void exit(ExitRequest e) throws IOException {
-		if (applicationContext instanceof Closeable) {
-			((Closeable) applicationContext).close();
-			System.exit(e.status());
 		}
 	}
 
