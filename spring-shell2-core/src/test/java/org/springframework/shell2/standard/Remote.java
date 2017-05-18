@@ -19,6 +19,7 @@ package org.springframework.shell2.standard;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.shell2.CompletionContext;
@@ -64,12 +65,18 @@ public class Remote {
 
 	public static class NumberValueProvider extends ValueProviderSupport {
 
+		private final String[] values;
+
+		public NumberValueProvider(String... values) {
+			this.values = values;
+		}
+
 		@Override
 		public List<CompletionProposal> complete(MethodParameter parameter, CompletionContext completionContext, String[] hints) {
 			String prefix = completionContext.currentWord() != null ? completionContext.currentWord() : "";
-			return Arrays.asList("12", "42", "7").stream()
+			return Stream.of(values)
 					.filter(n -> n.startsWith(prefix))
-					.map(n -> new CompletionProposal(n))
+					.map(CompletionProposal::new)
 					.collect(Collectors.toList());
 		}
 	}

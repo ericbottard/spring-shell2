@@ -178,7 +178,12 @@ public class StandardParameterResolver implements ParameterResolver {
 		if (!resolved.containsKey(param)) {
 			throw new ParameterMissingResolutionException(describe(methodParameter));
 		}
-		String s = resolved.get(param).value;
+		ParameterRawValue parameterRawValue = resolved.get(param);
+		return convertRawValue(parameterRawValue, methodParameter);
+	}
+
+	private Object convertRawValue(ParameterRawValue parameterRawValue, MethodParameter methodParameter) {
+		String s = parameterRawValue.value;
 		if (ShellOption.NULL.equals(s)) {
 			return null;
 		}
@@ -261,10 +266,12 @@ public class StandardParameterResolver implements ParameterResolver {
 		Exception unfinished = null;
 		// First try to see if this parameter has been set, even to some unfinished value
 		ParameterRawValue parameterRawValue = null;
+		int arity = 1;
 		try {
 			resolve(methodParameter, context.getWords());
 			CacheKey cacheKey = new CacheKey(methodParameter.getMethod(), context.getWords());
 			Parameter parameter = methodParameter.getMethod().getParameters()[methodParameter.getParameterIndex()];
+			arity = getArity(parameter);
 			parameterRawValue = parameterCache.get(cacheKey).get(parameter);
 			set = parameterRawValue.explicit;
 		}
@@ -298,6 +305,12 @@ public class StandardParameterResolver implements ParameterResolver {
 
 			String prefix = context.currentWordUpToCursor() != null ? context.currentWordUpToCursor() : "";
 			// TODO: should not look at last word only, but everything after what was used for key
+
+			Object value = convertRawValue(parameterRawValue, methodParameter);
+			if(value instanceof List && ((List)value).size() == arity) {
+				// We're done already
+				return result;
+			}
 			// Case 3
 			result.addAll(valueCompletions(methodParameter, context));
 
@@ -320,7 +333,7 @@ public class StandardParameterResolver implements ParameterResolver {
 		String prefix = context.currentWordUpToCursor() != null ? context.currentWordUpToCursor() : "";
 		return describe(methodParameter).keys().stream()
 				.filter(k -> k.startsWith(prefix))
-				.map(v -> new CompletionProposal(v))
+				.map(CompletionProposal::new)
 				.collect(Collectors.toList());
 	}
 

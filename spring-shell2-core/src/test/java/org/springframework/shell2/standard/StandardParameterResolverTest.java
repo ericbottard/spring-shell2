@@ -17,17 +17,18 @@
 package org.springframework.shell2.standard;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.util.ReflectionUtils.findMethod;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.jline.reader.ParsedLine;
 import org.jline.reader.impl.DefaultParser;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -208,35 +209,34 @@ public class StandardParameterResolverTest {
 	}
 
 	@Test
-	@Ignore("--numbers 42 34 66 fails")
 	public void testValueCompletionWithNonDefaultArity() {
 		
-		resolver.setValueProviders(Arrays.asList(new Remote.NumberValueProvider()));
+		resolver.setValueProviders(singletonList(new Remote.NumberValueProvider("12", "42", "7")));
 		
 		Method method = findMethod(Remote.class, "add", List.class);
 		List<String> completions = resolver.complete(
 				Utils.createMethodParameter(method, 0),
 				contextFor("--numbers ")
 		).stream().map(CompletionProposal::value).collect(Collectors.toList());
-		assertThat(completions).contains("12");
+		assertThat(completions).contains("12", "42", "7");
 
 		completions = resolver.complete(
 				Utils.createMethodParameter(method, 0),
 				contextFor("--numbers 42 ")
 		).stream().map(CompletionProposal::value).collect(Collectors.toList());
-		assertThat(completions).contains("12");
+		assertThat(completions).contains("12", "7");
 
 		completions = resolver.complete(
 				Utils.createMethodParameter(method, 0),
 				contextFor("--numbers 42 34 ")
 		).stream().map(CompletionProposal::value).collect(Collectors.toList());
-		assertThat(completions).contains("12");
+		assertThat(completions).contains("12", "7");
 
 		completions = resolver.complete(
 				Utils.createMethodParameter(method, 0),
 				contextFor("--numbers 42 34 66 ")
 		).stream().map(CompletionProposal::value).collect(Collectors.toList());
-		assertThat(completions).isEmpty();
+		assertThat(completions).isEmpty(); // All 3 have already been set
 	}
 
 
