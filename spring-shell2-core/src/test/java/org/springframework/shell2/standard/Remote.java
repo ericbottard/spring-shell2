@@ -58,6 +58,11 @@ public class Remote {
 
 	}
 
+	@ShellMethod(help = "add 3 numbers together (array)")
+	public void addAsArray(@ShellOption(arity = 3, valueProvider = NumberValueProvider.class) int[] numbers) {
+
+	}
+
 	public enum Delay {
 		small, medium, big;
 	}

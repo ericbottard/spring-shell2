@@ -16,14 +16,7 @@
 
 package org.springframework.shell2.standard;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.util.ReflectionUtils.findMethod;
-
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,6 +32,11 @@ import org.springframework.shell2.CompletionProposal;
 import org.springframework.shell2.ParameterMissingResolutionException;
 import org.springframework.shell2.UnfinishedParameterResolutionException;
 import org.springframework.shell2.Utils;
+
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.util.ReflectionUtils.findMethod;
 
 /**
  * Unit tests for DefaultParameterResolver.
@@ -213,30 +211,28 @@ public class StandardParameterResolverTest {
 		
 		resolver.setValueProviders(singletonList(new Remote.NumberValueProvider("12", "42", "7")));
 		
-		Method method = findMethod(Remote.class, "add", List.class);
-		List<String> completions = resolver.complete(
-				Utils.createMethodParameter(method, 0),
-				contextFor("--numbers ")
-		).stream().map(CompletionProposal::value).collect(Collectors.toList());
-		assertThat(completions).contains("12", "42", "7");
+		Method[] methods = {
+			findMethod(org.springframework.shell2.standard.Remote.class, "add", List.class),
+			findMethod(org.springframework.shell2.standard.Remote.class, "addAsArray", int[].class),
+		};
+		for (Method method : methods) {
+			List<String> completions = resolver
+					.complete(Utils.createMethodParameter(method, 0), contextFor("--numbers ")).stream()
+					.map(CompletionProposal::value).collect(Collectors.toList());
+			assertThat(completions).contains("12", "42", "7");
 
-		completions = resolver.complete(
-				Utils.createMethodParameter(method, 0),
-				contextFor("--numbers 42 ")
-		).stream().map(CompletionProposal::value).collect(Collectors.toList());
-		assertThat(completions).contains("12", "7");
+			completions = resolver.complete(Utils.createMethodParameter(method, 0), contextFor("--numbers 42 "))
+					.stream().map(CompletionProposal::value).collect(Collectors.toList());
+			assertThat(completions).contains("12", "7");
 
-		completions = resolver.complete(
-				Utils.createMethodParameter(method, 0),
-				contextFor("--numbers 42 34 ")
-		).stream().map(CompletionProposal::value).collect(Collectors.toList());
-		assertThat(completions).contains("12", "7");
+			completions = resolver.complete(Utils.createMethodParameter(method, 0), contextFor("--numbers 42 34 "))
+					.stream().map(CompletionProposal::value).collect(Collectors.toList());
+			assertThat(completions).contains("12", "7");
 
-		completions = resolver.complete(
-				Utils.createMethodParameter(method, 0),
-				contextFor("--numbers 42 34 66 ")
-		).stream().map(CompletionProposal::value).collect(Collectors.toList());
-		assertThat(completions).isEmpty(); // All 3 have already been set
+			completions = resolver.complete(Utils.createMethodParameter(method, 0), contextFor("--numbers 42 34 66 "))
+					.stream().map(CompletionProposal::value).collect(Collectors.toList());
+			assertThat(completions).isEmpty(); // All 3 have already been set
+		}
 	}
 
 

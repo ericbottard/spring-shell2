@@ -16,8 +16,7 @@
 
 package org.springframework.shell2.standard;
 
-import static org.springframework.shell2.Utils.unCamelify;
-
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
@@ -48,6 +47,9 @@ import org.springframework.shell2.Utils;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.util.ConcurrentReferenceHashMap;
+import org.springframework.util.ObjectUtils;
+
+import static org.springframework.shell2.Utils.unCamelify;
 
 /**
  * Default ParameterResolver implementation that supports the following features:<ul>
@@ -307,7 +309,8 @@ public class StandardParameterResolver implements ParameterResolver {
 			// TODO: should not look at last word only, but everything after what was used for key
 
 			Object value = convertRawValue(parameterRawValue, methodParameter);
-			if(value instanceof List && ((List)value).size() == arity) {
+			if (value instanceof Collection && ((Collection) value).size() == arity
+					|| (ObjectUtils.isArray(value) && Array.getLength(value) == arity)) {
 				// We're done already
 				return result;
 			}
