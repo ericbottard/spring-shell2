@@ -33,6 +33,8 @@ import org.springframework.shell.converters.BooleanConverter;
 import org.springframework.shell.converters.EnumConverter;
 import org.springframework.shell.converters.StringConverter;
 import org.springframework.shell.core.Converter;
+import org.springframework.shell.core.annotation.CliOption;
+import org.springframework.shell2.ParameterDescription;
 import org.springframework.shell2.ParameterResolver;
 import org.springframework.shell2.Utils;
 import org.springframework.test.context.ContextConfiguration;
@@ -152,6 +154,36 @@ public class LegacyParameterResolverTest {
 		thrown.expect(IllegalStateException.class);
 		thrown.expectMessage("No converter found for --v2 from '42' to type int");
 		resolve(methodParameter, "--v1 1 --v2");
+	}
+	
+	@Test
+	public void testDescribeBothDefaultsNotDeclared() {
+		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.REGISTER_METHOD, 1);
+		
+		ParameterDescription description = parameterResolver.describe(methodParameter);
+		
+		assertThat(description.keys()).containsExactly("type");
+		assertThat(description.formal()).isEqualTo(Utils.unCamelify(ArtifactType.class.getSimpleName()));
+		assertThat(description.defaultValue().get()).isEqualTo("<none> (if declared), <none> (if not declared)");
+		assertThat(description.mandatoryKey()).isFalse();
+		
+		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
+		assertThat(description.help()).isEqualTo(expectedHelp);
+	}
+	
+	@Test
+	public void testDescribeBothDefaultsDeclared() {
+		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.REGISTER_METHOD, 3);
+		
+		ParameterDescription description = parameterResolver.describe(methodParameter);
+		
+		assertThat(description.keys()).containsExactly("force");
+		assertThat(description.formal()).isEqualTo(boolean.class.getName());
+		assertThat(description.defaultValue().get()).isEqualTo("true (if declared), false (if not declared)");
+		assertThat(description.mandatoryKey()).isFalse();
+		
+		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
+		assertThat(description.help()).isEqualTo(expectedHelp);
 	}
 
 	private Object resolve(MethodParameter methodParameter, String command) {

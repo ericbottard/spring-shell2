@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.shell2.legacy;
 
+import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -41,10 +42,13 @@ import org.springframework.util.Assert;
  * Resolves parameters by looking at the {@link CliOption} annotation and acting accordingly.
  *
  * @author Eric Bottard
+ * @author Camilo Gonzalez
  */
 @Component
 public class LegacyParameterResolver implements ParameterResolver {
 
+	private static final String CLI_OPTION_NULL = "__NULL__";
+	
 	@Autowired(required = false)
 	private Collection<Converter<?>> converters = new ArrayList<>();
 
@@ -82,7 +86,40 @@ public class LegacyParameterResolver implements ParameterResolver {
 
 	@Override
 	public ParameterDescription describe(MethodParameter parameter) {
-		throw new UnsupportedOperationException();
+		Parameter jlrParameter = parameter.getMethod().getParameters()[parameter.getParameterIndex()];
+		CliOption option = jlrParameter.getAnnotation(CliOption.class);
+		ParameterDescription result = ParameterDescription.outOf(parameter);
+		result.help(option.help());
+		result.defaultValue(defaultValueFor(option));
+		result.keys(Arrays.asList(option.key()));
+		result.mandatoryKey(false);
+		return result;
+	}
+
+	private String defaultValueFor(CliOption option) {
+		// CliOption annotations have two default values, one for when the key is specified without a value,
+		// and one when the key isn't specified (e.g. "command --key" vs "command")
+
+		final boolean unspecifiedDefaultDeclared = !CLI_OPTION_NULL.equals(option.unspecifiedDefaultValue());
+		final boolean specifiedDefaultDeclared = !CLI_OPTION_NULL.equals(option.specifiedDefaultValue());
+
+		final StringBuilder defaultValue = new StringBuilder();
+
+		if (specifiedDefaultDeclared) {
+			defaultValue.append(option.specifiedDefaultValue());
+		} else {
+			defaultValue.append("<none>");
+		}
+		defaultValue.append(" (if declared), ");
+
+		if (unspecifiedDefaultDeclared) {
+			defaultValue.append(option.unspecifiedDefaultValue());
+		} else {
+			defaultValue.append("<none>");
+		}
+		defaultValue.append(" (if not declared)");
+
+		return defaultValue.toString();
 	}
 
 	@Override
@@ -137,5 +174,5 @@ public class LegacyParameterResolver implements ParameterResolver {
 	private Supplier<IllegalStateException> noConverterFound(String key, String value, Class<?> parameterType) {
 		return () -> new IllegalStateException("No converter found for --" + key + " from '" + value + "' to type " + parameterType);
 	}
-
+	
 }
