@@ -38,9 +38,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class CommandValueProvider extends ValueProviderSupport {
 
+	private final Shell shell;
+
 	@Lazy
 	@Autowired
-	private Shell shell;
+	public CommandValueProvider(Shell shell) {
+		this.shell = shell;
+	}
 
 	@Override
 	public List<CompletionProposal> complete(MethodParameter parameter, CompletionContext completionContext, String[] hints) {
