@@ -195,7 +195,7 @@ public class LegacyParameterResolverTest {
 		assertThat(description.keys()).containsExactly("--v2");
 		assertThat(description.formal()).isEqualTo(int.class.getName());
 		assertThat(description.defaultValue().get()).isEqualTo("42 if used as --v2");
-		assertThat(description.mandatoryKey()).isFalse();
+		assertThat(description.mandatoryKey()).isTrue();
 		
 		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
 		assertThat(description.help()).isEqualTo(expectedHelp);
@@ -210,7 +210,7 @@ public class LegacyParameterResolverTest {
 		assertThat(description.keys()).containsExactly("--v1");
 		assertThat(description.formal()).isEqualTo(int.class.getName());
 		assertThat(description.defaultValue().get()).isEqualTo("38");
-		assertThat(description.mandatoryKey()).isFalse();
+		assertThat(description.mandatoryKey()).isTrue();
 		
 		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
 		assertThat(description.help()).isEqualTo(expectedHelp);
@@ -240,7 +240,7 @@ public class LegacyParameterResolverTest {
 		assertThat(description.keys()).containsExactly("--key");
 		assertThat(description.formal()).isEqualTo(Utils.unCamelify(String.class.getSimpleName()));
 		assertThat(description.defaultValue().get()).isEqualTo("null");
-		assertThat(description.mandatoryKey()).isFalse();
+		assertThat(description.mandatoryKey()).isTrue();
 		
 		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
 		assertThat(description.help()).isEqualTo(expectedHelp);

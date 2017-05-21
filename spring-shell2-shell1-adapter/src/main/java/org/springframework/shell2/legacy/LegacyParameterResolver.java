@@ -105,8 +105,7 @@ public class LegacyParameterResolver implements ParameterResolver {
 			result.defaultValue(defaultValue.get());
 		}
 		boolean containsEmptyKey = keys.contains("");
-		// the key is mandatory only if the option is mandatory and it cannot be specified using an "empty" key
-		result.mandatoryKey(option.mandatory() && !containsEmptyKey);
+		result.mandatoryKey(!containsEmptyKey);
 		return result;
 	}
 
