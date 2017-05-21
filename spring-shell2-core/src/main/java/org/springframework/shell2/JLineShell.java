@@ -96,6 +96,10 @@ public class JLineShell implements Shell {
 			methodTargets.putAll(resolver.resolve());
 		}
 
+		DefaultParser parser = new DefaultParser();
+		parser.setEofOnUnclosedQuote(true);
+		parser.setEofOnEscapedNewLine(true);
+
 		LineReaderBuilder lineReaderBuilder = LineReaderBuilder.builder()
 				.terminal(terminal)
 				.appName("Foo")
@@ -120,7 +124,7 @@ public class JLineShell implements Shell {
 						}
 					}
 				})
-				.parser(new DefaultParser());
+				.parser(parser);
 
 		lineReader = lineReaderBuilder.build();
 
