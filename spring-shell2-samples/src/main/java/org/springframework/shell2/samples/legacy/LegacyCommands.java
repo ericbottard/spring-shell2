@@ -59,5 +59,10 @@ public class LegacyCommands implements CommandMarker {
 	public int sum(@CliOption(key = "v1", unspecifiedDefaultValue = "38") int a, @CliOption(key = "v2", specifiedDefaultValue = "42") int b) {
 		return a + b;
 	}
+	
+	@CliCommand(value = "legacy-echo", help = "Echoes a message")
+	public String legacyEcho(@CliOption(key = "") String message) {
+		return message;
+	}
 
 }

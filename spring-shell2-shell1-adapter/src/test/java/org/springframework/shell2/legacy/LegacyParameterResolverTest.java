@@ -162,10 +162,10 @@ public class LegacyParameterResolverTest {
 		
 		ParameterDescription description = parameterResolver.describe(methodParameter);
 		
-		assertThat(description.keys()).containsExactly("type");
+		assertThat(description.keys()).containsExactly("--type");
 		assertThat(description.formal()).isEqualTo(Utils.unCamelify(ArtifactType.class.getSimpleName()));
-		assertThat(description.defaultValue().get()).isEqualTo("<none> (if declared), <none> (if not declared)");
-		assertThat(description.mandatoryKey()).isFalse();
+		assertThat(description.defaultValue().isPresent()).isFalse();
+		assertThat(description.mandatoryKey()).isTrue();
 		
 		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
 		assertThat(description.help()).isEqualTo(expectedHelp);
@@ -177,9 +177,54 @@ public class LegacyParameterResolverTest {
 		
 		ParameterDescription description = parameterResolver.describe(methodParameter);
 		
-		assertThat(description.keys()).containsExactly("force");
+		assertThat(description.keys()).containsExactly("--force");
 		assertThat(description.formal()).isEqualTo(boolean.class.getName());
 		assertThat(description.defaultValue().get()).isEqualTo("true (if declared), false (if not declared)");
+		assertThat(description.mandatoryKey()).isTrue();
+		
+		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
+		assertThat(description.help()).isEqualTo(expectedHelp);
+	}
+	
+	@Test
+	public void testDescribeOnlySpecifiedDefaultDeclared() {
+		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.SUM_METHOD, 1);
+		
+		ParameterDescription description = parameterResolver.describe(methodParameter);
+		
+		assertThat(description.keys()).containsExactly("--v2");
+		assertThat(description.formal()).isEqualTo(int.class.getName());
+		assertThat(description.defaultValue().get()).isEqualTo("42 (if declared)");
+		assertThat(description.mandatoryKey()).isTrue();
+		
+		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
+		assertThat(description.help()).isEqualTo(expectedHelp);
+	}
+	
+	@Test
+	public void testDescribeOnlyUnspecifiedDefaultDeclared() {
+		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.SUM_METHOD, 0);
+		
+		ParameterDescription description = parameterResolver.describe(methodParameter);
+		
+		assertThat(description.keys()).containsExactly("--v1");
+		assertThat(description.formal()).isEqualTo(int.class.getName());
+		assertThat(description.defaultValue().get()).isEqualTo("38 (if not declared)");
+		assertThat(description.mandatoryKey()).isTrue();
+		
+		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
+		assertThat(description.help()).isEqualTo(expectedHelp);
+	}
+	
+	@Test
+	public void testDescribeDefaultKey() {
+		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.LEGACY_ECHO_METHOD, 0);
+		
+		ParameterDescription description = parameterResolver.describe(methodParameter);
+		
+		assertThat(description.keys()).isEmpty();
+		assertThat(description.formal()).isEqualTo(Utils.unCamelify(String.class.getSimpleName()));
+		assertThat(description.defaultValue().isPresent()).isFalse();
 		assertThat(description.mandatoryKey()).isFalse();
 		
 		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();

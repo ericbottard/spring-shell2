@@ -49,6 +49,11 @@ public class LegacyParameterResolver implements ParameterResolver {
 
 	private static final String CLI_OPTION_NULL = "__NULL__";
 	
+	/**
+	 * Prefix used by Spring Shell 1 for the argument keys (e.g. command --key value)
+	 */
+	private static final String CLI_PREFIX = "--";
+	
 	@Autowired(required = false)
 	private Collection<Converter<?>> converters = new ArrayList<>();
 
@@ -90,36 +95,48 @@ public class LegacyParameterResolver implements ParameterResolver {
 		CliOption option = jlrParameter.getAnnotation(CliOption.class);
 		ParameterDescription result = ParameterDescription.outOf(parameter);
 		result.help(option.help());
-		result.defaultValue(defaultValueFor(option));
-		result.keys(Arrays.asList(option.key()));
-		result.mandatoryKey(false);
+		Optional<String> defaultValue = defaultValueFor(option);
+		if (defaultValue.isPresent()) {
+			result.defaultValue(defaultValue.get());
+		}
+		List<String> keys = Arrays.asList(option.key());
+		result.keys(keys.stream()
+				.filter(key -> !key.isEmpty())
+				.map(key -> CLI_PREFIX + key)
+				.collect(Collectors.toList()));
+		boolean containsEmptyKey = keys.contains("");
+		result.mandatoryKey(!containsEmptyKey);
 		return result;
 	}
 
-	private String defaultValueFor(CliOption option) {
+	private Optional<String> defaultValueFor(CliOption option) {
 		// CliOption annotations have two default values, one for when the key is specified without a value,
 		// and one when the key isn't specified (e.g. "command --key" vs "command")
 
 		final boolean unspecifiedDefaultDeclared = !CLI_OPTION_NULL.equals(option.unspecifiedDefaultValue());
 		final boolean specifiedDefaultDeclared = !CLI_OPTION_NULL.equals(option.specifiedDefaultValue());
 
+		if (!unspecifiedDefaultDeclared && !specifiedDefaultDeclared) {
+			return Optional.empty();
+		}
+
 		final StringBuilder defaultValue = new StringBuilder();
 
 		if (specifiedDefaultDeclared) {
 			defaultValue.append(option.specifiedDefaultValue());
-		} else {
-			defaultValue.append("<none>");
+			defaultValue.append(" (if declared)");
 		}
-		defaultValue.append(" (if declared), ");
 
 		if (unspecifiedDefaultDeclared) {
-			defaultValue.append(option.unspecifiedDefaultValue());
-		} else {
-			defaultValue.append("<none>");
-		}
-		defaultValue.append(" (if not declared)");
+			if (specifiedDefaultDeclared) {
+				defaultValue.append(", ");
+			}
 
-		return defaultValue.toString();
+			defaultValue.append(option.unspecifiedDefaultValue());
+			defaultValue.append(" (if not declared)");
+		}
+
+		return Optional.of(defaultValue.toString());
 	}
 
 	@Override
