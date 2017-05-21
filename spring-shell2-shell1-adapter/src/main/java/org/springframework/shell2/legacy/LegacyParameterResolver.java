@@ -50,7 +50,7 @@ public class LegacyParameterResolver implements ParameterResolver {
 	private static final String CLI_OPTION_NULL = "__NULL__";
 	
 	/**
-	 * Prefix used by Spring Shell 1 for the argument keys (e.g. command --key value)
+	 * Prefix used by Spring Shell 1 for the argument keys (<em>e.g.</em> command --key value).
 	 */
 	private static final String CLI_PREFIX = "--";
 	
@@ -95,21 +95,22 @@ public class LegacyParameterResolver implements ParameterResolver {
 		CliOption option = jlrParameter.getAnnotation(CliOption.class);
 		ParameterDescription result = ParameterDescription.outOf(parameter);
 		result.help(option.help());
-		Optional<String> defaultValue = defaultValueFor(option);
-		if (defaultValue.isPresent()) {
-			result.defaultValue(defaultValue.get());
-		}
 		List<String> keys = Arrays.asList(option.key());
 		result.keys(keys.stream()
 				.filter(key -> !key.isEmpty())
 				.map(key -> CLI_PREFIX + key)
 				.collect(Collectors.toList()));
+		Optional<String> defaultValue = defaultValueFor(option, result.keys());
+		if (defaultValue.isPresent()) {
+			result.defaultValue(defaultValue.get());
+		}
 		boolean containsEmptyKey = keys.contains("");
-		result.mandatoryKey(!containsEmptyKey);
+		// the key is mandatory only if the option is mandatory and it cannot be specified using an "empty" key
+		result.mandatoryKey(option.mandatory() && !containsEmptyKey);
 		return result;
 	}
 
-	private Optional<String> defaultValueFor(CliOption option) {
+	private Optional<String> defaultValueFor(CliOption option, List<String> keys) {
 		// CliOption annotations have two default values, one for when the key is specified without a value,
 		// and one when the key isn't specified (e.g. "command --key" vs "command")
 
@@ -117,23 +118,29 @@ public class LegacyParameterResolver implements ParameterResolver {
 		final boolean specifiedDefaultDeclared = !CLI_OPTION_NULL.equals(option.specifiedDefaultValue());
 
 		if (!unspecifiedDefaultDeclared && !specifiedDefaultDeclared) {
-			return Optional.empty();
+			if (option.mandatory()) {
+				return Optional.empty();
+			} else {
+				// according to CliOption, is no default is declared, then null will be presented to non-primitive
+				// arguments
+				return Optional.of("null");
+			}
 		}
 
 		final StringBuilder defaultValue = new StringBuilder();
 
-		if (specifiedDefaultDeclared) {
-			defaultValue.append(option.specifiedDefaultValue());
-			defaultValue.append(" (if declared)");
-		}
-
 		if (unspecifiedDefaultDeclared) {
-			if (specifiedDefaultDeclared) {
-				defaultValue.append(", ");
-			}
-
 			defaultValue.append(option.unspecifiedDefaultValue());
-			defaultValue.append(" (if not declared)");
+		}
+		
+		if (specifiedDefaultDeclared) {
+			if (unspecifiedDefaultDeclared) {
+				defaultValue.append(", or ");
+			}
+			
+			defaultValue.append(option.specifiedDefaultValue());
+			defaultValue.append(" if used as ");
+			defaultValue.append(keys.stream().collect(Collectors.joining(" or ")));
 		}
 
 		return Optional.of(defaultValue.toString());

@@ -115,9 +115,9 @@ public class Help {
 				if (!description.mandatoryKey()) {
 					result.append("]");
 				}
-			}
-			if (!description.formal().isEmpty()) {
-				result.append(" ");
+				if (!description.formal().isEmpty()) {
+					result.append(" ");
+				}
 			}
 			appendUnderlinedFormal(result, description);
 			if (description.defaultValue().isPresent()) {
