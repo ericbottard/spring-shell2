@@ -105,25 +105,32 @@ public class Help {
 		for (ParameterDescription description : parameterDescriptions) {
 
 			if (description.defaultValue().isPresent()) {
-				result.append("[");
+				result.append("["); // Whole parameter is optional, as there is a default value (1)
 			}
-			if(!description.keys().isEmpty()) {
+			List<String> keys = description.keys();
+			if(!keys.isEmpty()) {
 				if (!description.mandatoryKey()) {
-					result.append("[");
+					result.append("["); // Specifying a key is optional (ie positional params). (2)
 				}
-				result.append(description.keys().iterator().next(), AttributedStyle.BOLD);
+				result.append(first(keys), AttributedStyle.BOLD);
 				if (!description.mandatoryKey()) {
-					result.append("]");
+					result.append("]"); // (close 2)
 				}
 				if (!description.formal().isEmpty()) {
 					result.append(" ");
 				}
 			}
-			appendUnderlinedFormal(result, description);
-			if (description.defaultValue().isPresent()) {
-				result.append("]");
+			if (description.defaultValueWhenFlag().isPresent()) {
+				result.append("["); // Parameter can be used as a toggle flag (3)
 			}
-			result.append("  ");
+			appendUnderlinedFormal(result, description);
+			if (description.defaultValueWhenFlag().isPresent()) {
+				result.append("]"); // (close 3)
+			}
+			if (description.defaultValue().isPresent()) {
+				result.append("]"); // (close 1)
+			}
+			result.append("  "); // two spaces between each param for better legibility
 		}
 		result.append("\n\n");
 
@@ -137,7 +144,9 @@ public class Help {
 				if (!description.keys().isEmpty()) {
 					result.append("  ");
 				}
+				description.defaultValueWhenFlag().ifPresent(f -> result.append('['));
 				appendUnderlinedFormal(result, description);
+				description.defaultValueWhenFlag().ifPresent(f -> result.append(']'));
 				result.append("\n\t");
 			}
 			else if (description.keys().size() > 1) {
@@ -148,8 +157,14 @@ public class Help {
 			if (description.defaultValue().isPresent()) {
 				result
 						.append("  [Optional, default = ", AttributedStyle.BOLD)
-						.append(description.defaultValue().get(), AttributedStyle.BOLD.italic())
-						.append("]", AttributedStyle.BOLD);
+						.append(description.defaultValue().get(), AttributedStyle.BOLD.italic());
+				description.defaultValueWhenFlag().ifPresent(
+					s -> result.append(", or ", AttributedStyle.BOLD)
+						.append(s, AttributedStyle.BOLD.italic())
+					.append(" if used as a flag", AttributedStyle.BOLD)
+				);
+
+				result.append("]", AttributedStyle.BOLD);
 			} else {
 				result.append("  [Mandatory]", AttributedStyle.BOLD);
 			}
@@ -159,7 +174,7 @@ public class Help {
 		// ALSO KNOWN AS
 		Set<String> aliases = shell.listCommands().entrySet().stream()
 				.filter(e -> e.getValue().equals(methodTarget))
-				.map(e -> e.getKey())
+				.map(Map.Entry::getKey)
 				.filter(c -> !command.equals(c))
 				.collect(toCollection(TreeSet::new));
 
@@ -172,6 +187,10 @@ public class Help {
 
 		result.append("\n");
 		return result;
+	}
+
+	private String first(List<String> keys) {
+		return keys.iterator().next();
 	}
 
 	private CharSequence listCommands() {
@@ -195,7 +214,7 @@ public class Help {
 	}
 
 	private Comparator<Map.Entry<String, Set<String>>> sortByFirstElement() {
-		return (e1, e2) -> e1.getValue().iterator().next().compareTo(e2.getValue().iterator().next());
+		return Comparator.comparing(e -> e.getValue().iterator().next());
 	}
 
 	private void appendUnderlinedFormal(AttributedStringBuilder result, ParameterDescription description) {
