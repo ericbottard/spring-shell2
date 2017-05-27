@@ -62,7 +62,7 @@ public class LegacyCommands implements CommandMarker {
 		return a + b;
 	}
 
-	@CliCommand(value = "sum2", help = "adds two numbers")
+	@CliCommand(value = "sum2", help = "adds three numbers")
 	public int sum2(
 			@CliOption(key = "v1", unspecifiedDefaultValue = "38") int a,
 			@CliOption(key = "v2", specifiedDefaultValue = "42", mandatory = true) int b,

@@ -16,10 +16,10 @@
 
 package org.springframework.shell2.legacy;
 
-import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,8 +91,7 @@ public class LegacyParameterResolver implements ParameterResolver {
 
 	@Override
 	public ParameterDescription describe(MethodParameter parameter) {
-		Parameter jlrParameter = parameter.getMethod().getParameters()[parameter.getParameterIndex()];
-		CliOption option = jlrParameter.getAnnotation(CliOption.class);
+		CliOption option = parameter.getParameterAnnotation(CliOption.class);
 		ParameterDescription result = ParameterDescription.outOf(parameter);
 		result.help(option.help());
 		List<String> keys = Arrays.asList(option.key());
@@ -113,7 +112,57 @@ public class LegacyParameterResolver implements ParameterResolver {
 
 	@Override
 	public List<CompletionProposal> complete(MethodParameter parameter, CompletionContext context) {
-		return null;
+		// DevNote: in Legacy the user is either completing an argument (-- prefix) or the value of the argument (e.g. no arity to consider).
+		// Other cases to be considered include default keys and default values
+		
+		CliOption option = parameter.getParameterAnnotation(CliOption.class);
+		List<String> keys = Arrays.asList(option.key());
+		
+		int currentWordIndex = context.getWordIndex();		
+		
+		// 1) has a key for this parameter already been defined?
+		boolean keyAlreadyDefined = context.getWords().stream()
+				.filter(word -> word.startsWith(CLI_PREFIX) && keys.contains(word.substring(CLI_PREFIX.length())))
+				.map(word -> true)
+				.findFirst().orElse(false);
+		
+		if (keyAlreadyDefined) {
+			// if a key has already been provided for this parameter, then there is no need to provide completion
+			// proposals
+			return Collections.emptyList();
+		}
+		
+		// 2) is the user currently completing an argument key?
+		String currentWordUpToCursor = context.currentWordUpToCursor();
+		if (currentWordUpToCursor != null && currentWordUpToCursor.startsWith(CLI_PREFIX)) {
+			// return the keys of this parameter that aren't empty and match the current key being completed
+			return keys.stream()
+					.filter(key -> !key.isEmpty() && (CLI_PREFIX + key).startsWith(currentWordUpToCursor))
+					.map(key -> completionProposalFor(parameter, option, key))
+					.collect(Collectors.toList());
+		}
+		
+		// 3) is the previous word an argument key?
+		boolean isPreviousWordArgumentKey = currentWordIndex > 0 && context.getWords().get(currentWordIndex-1).startsWith(CLI_PREFIX);
+		
+		if(isPreviousWordArgumentKey) {
+			// in Shell 1 we don't provide value completions, and if the previous word is a key then
+			// we shouldn't provide any completions if there are no default values for that option
+			return Collections.emptyList();
+		}
+		
+		// 4) if none of the above, then return all non-empty keys as CompletionProposals
+		return keys.stream()
+				.filter(key -> !key.isEmpty())
+				.map(key -> completionProposalFor(parameter, option, key))
+				.collect(Collectors.toList());
+	}
+
+	private CompletionProposal completionProposalFor(MethodParameter parameter, CliOption option, String key) {
+		CompletionProposal completionProposal = new CompletionProposal(CLI_PREFIX + key);
+		completionProposal.category(parameter.getParameterName());
+		completionProposal.description(option.help());
+		return completionProposal;
 	}
 
 	private Map<String, String> parseOptions(List<String> words) {
@@ -121,9 +170,9 @@ public class LegacyParameterResolver implements ParameterResolver {
 		for (int i = 0; i < words.size(); i++) {
 			String word = words.get(i);
 			if (word.startsWith("--")) {
-				String key = word.substring("--".length());
+				String key = word.substring(CLI_PREFIX.length());
 				// If next word doesn't exist or starts with '--', this is an unary option. Store null
-				String value = i < words.size() - 1 && !words.get(i + 1).startsWith("--") ? words.get(++i) : null;
+				String value = i < words.size() - 1 && !words.get(i + 1).startsWith(CLI_PREFIX) ? words.get(++i) : null;
 				Assert.isTrue(!values.containsKey(key), String.format("Option --%s has already been set", key));
 				values.put(key, value);
 			} // Must be the 'anonymous' option
