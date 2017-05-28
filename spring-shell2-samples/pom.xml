@@ -51,6 +51,7 @@
 			<groupId>org.jline</groupId>
 			<artifactId>jline-terminal-jna</artifactId>
 			<version>${jline.version}</version>
+			<scope>runtime</scope>
 		</dependency>
 	</dependencies>
 	
