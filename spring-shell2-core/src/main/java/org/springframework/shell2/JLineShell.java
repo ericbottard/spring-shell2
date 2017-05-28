@@ -174,6 +174,15 @@ public class JLineShell implements Shell {
 		}
 	}
 
+	@Override
+	public String readLine(String prompt, boolean masked) {
+		try {
+			return lineReader.readLine(prompt, masked == true ? '*' : null);
+		} catch (UserInterruptException ex) {
+			return null;
+		}
+	}
+	
 	/**
 	 * Sanitize the buffer input given the customizations applied to the JLine parser (<em>e.g.</em> support for
 	 * line continuations, <em>etc.</em>)

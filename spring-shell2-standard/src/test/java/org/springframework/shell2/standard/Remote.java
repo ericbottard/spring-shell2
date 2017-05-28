@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package org.springframework.shell2.standard;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -30,6 +29,7 @@ import org.springframework.shell2.CompletionProposal;
  *
  * @author Eric Bottard
  * @author Florent Biville
+ * @author Camilo Gonzalez
  */
 public class Remote {
 
@@ -61,6 +61,26 @@ public class Remote {
 	@ShellMethod(help = "add 3 numbers together (array)")
 	public void addAsArray(@ShellOption(arity = 3, valueProvider = NumberValueProvider.class) int[] numbers) {
 
+	}
+	
+	@ShellMethod(help = "interactive")
+	public void interactive(@ShellOption(interactive = true) String value) {
+	}
+
+	@ShellMethod(help = "nonInteractive")
+	public void nonInteractive(@ShellOption String foo, String bar) {
+	}
+	
+	@ShellMethod(help = "interactiveWithDefault")
+	public void interactiveWithDefault(@ShellOption(interactive = true, defaultValue = "default") String value) {
+	}
+	
+	@ShellMethod(help="example of authentication")
+	public void authenticate(String username, @ShellOption(interactive = true, masked = true) String password) {
+	}
+	
+	// not marked as @ShellMethod and shouldn't be supported
+	public void notAShellMethod(String parameter) {
 	}
 
 	public enum Delay {
