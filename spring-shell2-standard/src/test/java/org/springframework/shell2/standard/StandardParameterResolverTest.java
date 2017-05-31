@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.util.ReflectionUtils.findMethod;
 
 /**
- * Unit tests for DefaultParameterResolver.
+ * Unit tests for the {@link StandardParameterResolver}.
  * @author Eric Bottard
  * @author Florent Biville
  */
@@ -139,6 +139,16 @@ public class StandardParameterResolverTest {
 				asList("--numbers 1 2".split(" "))
 		);
 	}
+	
+	@Test
+	public void testCompleteCommandResolutionWithInteractiveParameter() {
+		Method method = findMethod(Remote.class, "authenticate", String.class, String.class);
+
+		assertThat(resolver.resolve(
+				Utils.createMethodParameter(method, 0),
+				asList("--username abc --password".split(" "))
+		)).isEqualTo("abc");
+	}
 
 	@Test
 	public void testUnresolvableArg() throws Exception {
@@ -234,8 +244,30 @@ public class StandardParameterResolverTest {
 			assertThat(completions).isEmpty(); // All 3 have already been set
 		}
 	}
+	
+	// Tests for support
+	
+	@Test
+	public void testNotSupportedParameter() {
+		Method method = findMethod(Remote.class, "interactive", String.class);
 
+		assertThat(resolver.supports(Utils.createMethodParameter(method, 0))).isFalse();
+	}
+	
+	@Test
+	public void testNotSupportedMethod() {
+		Method method = findMethod(Remote.class, "notAShellMethod", String.class);
 
+		assertThat(resolver.supports(Utils.createMethodParameter(method, 0))).isFalse();
+	}
+
+	@Test
+	public void testSupportedParameters() {
+		Method method = findMethod(Remote.class, "nonInteractive", String.class, String.class);
+
+		assertThat(resolver.supports(Utils.createMethodParameter(method, 0))).isTrue();
+		assertThat(resolver.supports(Utils.createMethodParameter(method, 1))).isTrue();
+	}
 
 	private CompletionContext contextFor(String input) {
 		DefaultParser defaultParser = new DefaultParser();

@@ -102,6 +102,15 @@ public class JLineShell extends AbstractShell {
 		return new JLineInput(lineReader.getParsedLine());
 	}
 
+	@Override
+	public String readLine(String prompt, boolean masked) {
+		try {
+			return lineReader.readLine(prompt, masked == true ? '*' : null);
+		} catch (UserInterruptException ex) {
+			return null;
+		}
+	}
+	
 	/**
 	 * Sanitize the buffer input given the customizations applied to the JLine parser (<em>e.g.</em> support for
 	 * line continuations, <em>etc.</em>)

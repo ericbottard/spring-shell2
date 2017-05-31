@@ -100,7 +100,20 @@ public class StandardParameterResolver implements ParameterResolver {
 
 	@Override
 	public boolean supports(MethodParameter parameter) {
-		return parameter.getMethodAnnotation(ShellMethod.class) != null;
+		boolean methodIsShellMethod = parameter.getMethodAnnotation(ShellMethod.class) != null;
+
+		if (methodIsShellMethod) {
+			ShellOption shellOption = parameter.getParameterAnnotation(ShellOption.class);
+			if (shellOption == null) {
+				return true;
+			}
+
+			// this resolver doesn't support interactive parameters
+			if (!shellOption.interactive()) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
@@ -122,22 +135,24 @@ public class StandardParameterResolver implements ParameterResolver {
 				if (possibleKeys.contains(word)) {
 					String key = word;
 					Parameter parameter = lookupParameterForKey(methodParameter.getMethod(), key, prefix);
-					int arity = getArity(parameter);
-
-					if (i + 1 + arity > words.size()) {
-						String input = words.subList(i, words.size()).stream().collect(Collectors.joining(" "));
-						throw new UnfinishedParameterResolutionException(describe(Utils.createMethodParameter(parameter)), input);
-					}
-					Assert.isTrue(i + 1 + arity <= words.size(), String.format("Not enough input for parameter '%s'", word));
-					String raw = words.subList(i + 1, i + 1 + arity).stream().collect(Collectors.joining(","));
-					Assert.isTrue(!namedParameters.containsKey(key), String.format("Parameter for '%s' has already been specified", word));
-					namedParameters.put(key, raw);
-					result.put(parameter, ParameterRawValue.explicit(raw, key));
-					i += arity;
-					if (arity == 0) {
-						boolean defaultValue = booleanDefaultValue(parameter);
-						// Boolean parameter has been specified. Use the opposite of the default value
-						result.put(parameter, ParameterRawValue.explicit(String.valueOf(!defaultValue), key));
+					if (!isInteractive(parameter)) {
+						int arity = getArity(parameter);
+	
+						if (i + 1 + arity > words.size()) {
+							String input = words.subList(i, words.size()).stream().collect(Collectors.joining(" "));
+							throw new UnfinishedParameterResolutionException(describe(Utils.createMethodParameter(parameter)), input);
+						}
+						Assert.isTrue(i + 1 + arity <= words.size(), String.format("Not enough input for parameter '%s'", word));
+						String raw = words.subList(i + 1, i + 1 + arity).stream().collect(Collectors.joining(","));
+						Assert.isTrue(!namedParameters.containsKey(key), String.format("Parameter for '%s' has already been specified", word));
+						namedParameters.put(key, raw);
+						result.put(parameter, ParameterRawValue.explicit(raw, key));
+						i += arity;
+						if (arity == 0) {
+							boolean defaultValue = booleanDefaultValue(parameter);
+							// Boolean parameter has been specified. Use the opposite of the default value
+							result.put(parameter, ParameterRawValue.explicit(String.valueOf(!defaultValue), key));
+						}
 					}
 				} // store for later processing of positional params
 				else {
@@ -372,6 +387,11 @@ public class StandardParameterResolver implements ParameterResolver {
 		ShellOption option = parameter.getAnnotation(ShellOption.class);
 		int inferred = (parameter.getType() == boolean.class || parameter.getType() == Boolean.class) ? 0 : 1;
 		return option != null ? option.arity() : inferred;
+	}
+	
+	private boolean isInteractive(Parameter parameter) {
+		ShellOption option = parameter.getAnnotation(ShellOption.class);
+		return option != null && option.interactive();
 	}
 
 	/**

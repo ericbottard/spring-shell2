@@ -72,6 +72,16 @@ public class Commands {
 	public double addDoubles(@ShellOption(arity = 3) double[] numbers) {
 		return Arrays.stream(numbers).sum();
 	}
+
+	@ShellMethod(help = "authenticate user")
+	public String authenticate(String username, @ShellOption(interactive = true, masked = true) String password) {
+		return String.format("Authenticating user %s with password %s", username, password);
+	}
+
+	@ShellMethod(help = "interactiveWithDefault")
+	public String interactiveWithDefault(@ShellOption(interactive = true, defaultValue = "default") String value) {
+		return value;
+	}
 }
 
 /**

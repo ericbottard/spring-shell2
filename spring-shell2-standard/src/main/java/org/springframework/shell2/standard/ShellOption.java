@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import java.lang.annotation.Target;
  *
  * @author Eric Bottard
  * @author Florent Biville
+ * @author Camilo Gonzalez
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
@@ -60,6 +61,18 @@ public @interface ShellOption {
 
 	Class<? extends ValueProvider> valueProvider() default NoValueProvider.class;
 
+	/**
+	 * @return true if this option will be requested in interactive mode to the user, or if the
+	 *         option is expected as part of the command (default false)
+	 */
+	boolean interactive() default false;
+
+	/**
+	 * @return true if this option will be masked in the console (e.g. for passwords). Only valid in
+	 *         conjunction with interactive mode. (default false)
+	 */
+	boolean masked() default false;
+	
 	interface NoValueProvider extends ValueProvider {
 
 	}
