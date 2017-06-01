@@ -74,8 +74,17 @@ public class CompletionContext {
 		return wordIndex >= 0 && wordIndex < words.size() ? words.get(wordIndex) : null;
 	}
 
+	/**
+	 * Return the current word up to the position of the cursor, or {@code null} if {@link #currentWord()} is null
+	 */
 	public String currentWordUpToCursor() {
 		String currentWord = currentWord();
 		return currentWord != null ? currentWord.substring(0, getPosition()) : null;
 	}
+
+	@Override
+	public String toString() {
+		return "CompletionContext [words=" + words + ", wordIndex=" + wordIndex + ", position=" + position + "]";
+	}
+	
 }
