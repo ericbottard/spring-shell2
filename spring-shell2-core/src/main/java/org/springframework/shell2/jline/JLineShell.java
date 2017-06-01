@@ -36,6 +36,8 @@ import org.jline.utils.AttributedStringBuilder;
 import org.jline.utils.AttributedStyle;
 
 import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.shell2.CompletingParsedLine;
@@ -43,6 +45,7 @@ import org.springframework.shell2.CompletionContext;
 import org.springframework.shell2.CompletionProposal;
 import org.springframework.shell2.ExitRequest;
 import org.springframework.shell2.Input;
+import org.springframework.shell2.ResultHandler;
 import org.springframework.shell2.Shell;
 
 /**
@@ -53,6 +56,10 @@ import org.springframework.shell2.Shell;
  */
 @Configuration
 public class JLineShell {
+
+	@Autowired
+	@Qualifier("main")
+	private  ResultHandler resultHandler;
 
 	@Bean
 	public Terminal terminal() {
@@ -66,7 +73,7 @@ public class JLineShell {
 
 	@Bean
 	public Shell shell() {
-		return new Shell(new JLineInputProvider(lineReader()));
+		return new Shell(new JLineInputProvider(lineReader()), resultHandler);
 	}
 
 	@Bean

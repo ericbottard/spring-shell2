@@ -33,7 +33,6 @@ import javax.validation.Validation;
 import javax.validation.executable.ExecutableValidator;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.MethodParameter;
 import org.springframework.util.ReflectionUtils;
@@ -52,9 +51,7 @@ public class Shell implements CommandRegistry {
 
 	private final InputProvider inputProvider;
 
-	@Autowired
-	@Qualifier("main")
-	ResultHandler resultHandler;
+	private final ResultHandler resultHandler;
 
 	@Autowired
 	protected ApplicationContext applicationContext;
@@ -69,8 +66,9 @@ public class Shell implements CommandRegistry {
 	 */
 	protected static final Object UNRESOLVED = new Object();
 
-	public Shell(InputProvider inputProvider) {
+	public Shell(InputProvider inputProvider, ResultHandler resultHandler) {
 		this.inputProvider = inputProvider;
+		this.resultHandler = resultHandler;
 	}
 
 	@Override
@@ -109,13 +107,13 @@ public class Shell implements CommandRegistry {
 
 			String command = findLongestCommand(line);
 
+			Object result;
 			if (command != null) {
 				int wordsUsedForCommandKey = command.split(" ").length;
 				MethodTarget methodTarget = methodTargets.get(command);
 				List<String> wordsForArgs = words.subList(wordsUsedForCommandKey, words.size());
 				Method method = methodTarget.getMethod();
 
-				Object result = null;
 				try {
 					Object[] args = resolveArgs(method, wordsForArgs);
 					validateArgs(args, methodTarget);
@@ -124,13 +122,11 @@ public class Shell implements CommandRegistry {
 				catch (Exception e) {
 					result = e;
 				}
-
-				resultHandler.handleResult(result);
-
 			}
 			else {
-				System.out.println("No command found for " + words);
+				result = new CommandNotFound(words);
 			}
+			resultHandler.handleResult(result);
 		}
 	}
 
@@ -217,7 +213,7 @@ public class Shell implements CommandRegistry {
 		return args;
 	}
 
-	protected ParameterResolver findResolver(MethodParameter parameter) {
+	private ParameterResolver findResolver(MethodParameter parameter) {
 		return parameterResolvers.stream()
 			.filter(resolver -> resolver.supports(parameter))
 			.findFirst()
@@ -230,7 +226,7 @@ public class Shell implements CommandRegistry {
 	 *
 	 * @return a valid command name, or {@literal null} if none matched
 	 */
-	protected String findLongestCommand(String prefix) {
+	private String findLongestCommand(String prefix) {
 		String result = methodTargets.keySet().stream()
 			.filter(prefix::startsWith)
 			.reduce("", (c1, c2) -> c1.length() > c2.length() ? c1 : c2);
