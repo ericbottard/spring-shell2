@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 package org.springframework.shell2.standard;
+
+import static org.springframework.shell2.Utils.unCamelify;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
@@ -49,8 +51,6 @@ import org.springframework.util.Assert;
 import org.springframework.util.ConcurrentReferenceHashMap;
 import org.springframework.util.ObjectUtils;
 
-import static org.springframework.shell2.Utils.unCamelify;
-
 /**
  * Default ParameterResolver implementation that supports the following features:<ul>
  * <li>named parameters (recognized because they start with some {@link ShellMethod#prefix()})</li>
@@ -73,6 +73,7 @@ import static org.springframework.shell2.Utils.unCamelify;
  * if needed.</p>
  * @author Eric Bottard
  * @author Florent Biville
+ * @author Camilo Gonzalez
  */
 @Component
 public class StandardParameterResolver implements ParameterResolver {
@@ -104,7 +105,7 @@ public class StandardParameterResolver implements ParameterResolver {
 	}
 
 	@Override
-	public Object resolve(MethodParameter methodParameter, List<String> words) {
+	public StandardValueResult resolve(MethodParameter methodParameter, List<String> words) {
 		String prefix = prefixForMethod(methodParameter.getMethod());
 
 		CacheKey cacheKey = new CacheKey(methodParameter.getMethod(), words);
@@ -112,12 +113,15 @@ public class StandardParameterResolver implements ParameterResolver {
 
 			Map<Parameter, ParameterRawValue> result = new HashMap<>();
 			Map<String, String> namedParameters = new HashMap<>();
-			List<String> positionalValues = new ArrayList<>();
+			
+			// index of words that haven't yet been used to resolve parameter values
+			List<Integer> unusedWords = new ArrayList<>();
 
 			Set<String> possibleKeys = gatherAllPossibleKeys(methodParameter.getMethod());
 
 			// First, resolve all parameters passed by-name
 			for (int i = 0; i < words.size(); i++) {
+				int from = i;
 				String word = words.get(i);
 				if (possibleKeys.contains(word)) {
 					String key = word;
@@ -132,16 +136,17 @@ public class StandardParameterResolver implements ParameterResolver {
 					String raw = words.subList(i + 1, i + 1 + arity).stream().collect(Collectors.joining(","));
 					Assert.isTrue(!namedParameters.containsKey(key), String.format("Parameter for '%s' has already been specified", word));
 					namedParameters.put(key, raw);
-					result.put(parameter, ParameterRawValue.explicit(raw, key));
-					i += arity;
 					if (arity == 0) {
 						boolean defaultValue = booleanDefaultValue(parameter);
 						// Boolean parameter has been specified. Use the opposite of the default value
-						result.put(parameter, ParameterRawValue.explicit(String.valueOf(!defaultValue), key));
+						result.put(parameter, ParameterRawValue.explicit(String.valueOf(!defaultValue), key, from, from));
+					} else {
+						i += arity;
+						result.put(parameter, ParameterRawValue.explicit(raw, key, from, i));
 					}
 				} // store for later processing of positional params
 				else {
-					positionalValues.add(word);
+					unusedWords.add(i);
 				}
 			}
 
@@ -156,14 +161,18 @@ public class StandardParameterResolver implements ParameterResolver {
 				copy.retainAll(namedParameters.keySet());
 				if (copy.isEmpty()) { // Was not set via a key (including aliases), must be positional
 					int arity = getArity(parameter);
-					if (arity > 0 && (offset + arity) <= positionalValues.size()) {
-						String raw = positionalValues.subList(offset, offset + arity).stream().collect(Collectors.joining(","));
-						result.put(parameter, ParameterRawValue.explicit(raw, null));
+					if (arity > 0 && (offset + arity) <= unusedWords.size()) {
+						String raw = unusedWords.subList(offset, offset + arity).stream()
+								.map(index -> words.get(index))
+								.collect(Collectors.joining(","));
+						int from = unusedWords.get(offset);
+						int to = from + arity - 1;
+						result.put(parameter, ParameterRawValue.explicit(raw, null, from, to));
 						offset += arity;
 					} // No more input. Try defaultValues
 					else {
 						Optional<String> defaultValue = defaultValueFor(parameter);
-						defaultValue.ifPresent(value -> result.put(parameter, ParameterRawValue.implicit(value, null)));
+						defaultValue.ifPresent(value -> result.put(parameter, ParameterRawValue.implicit(value, null, null, null)));
 					}
 				}
 				else if (copy.size() > 1) {
@@ -171,8 +180,10 @@ public class StandardParameterResolver implements ParameterResolver {
 				}
 			}
 
-			Assert.isTrue(offset == positionalValues.size(), "Too many arguments: the following could not be mapped to parameters: "
-					+ positionalValues.subList(offset, positionalValues.size()).stream().collect(Collectors.joining(" ", "'", "'")));
+			Assert.isTrue(offset == unusedWords.size(),
+					"Too many arguments: the following could not be mapped to parameters: "
+							+ unusedWords.subList(offset, unusedWords.size()).stream()
+									.map(index -> words.get(index)).collect(Collectors.joining(" ", "'", "'")));
 			return result;
 		});
 
@@ -181,7 +192,10 @@ public class StandardParameterResolver implements ParameterResolver {
 			throw new ParameterMissingResolutionException(describe(methodParameter));
 		}
 		ParameterRawValue parameterRawValue = resolved.get(param);
-		return convertRawValue(parameterRawValue, methodParameter);
+		Object value = convertRawValue(parameterRawValue, methodParameter);
+		boolean explicitKey = parameterRawValue.key != null;
+		return new StandardValueResult(methodParameter, value, parameterRawValue.from, parameterRawValue.to,
+				explicitKey);
 	}
 
 	private Object convertRawValue(ParameterRawValue parameterRawValue, MethodParameter methodParameter) {
@@ -437,9 +451,9 @@ public class StandardParameterResolver implements ParameterResolver {
 
 		private CompletionContext context;
 
-		private int from;
+		private Integer from;
 
-		private int to;
+		private Integer to;
 
 		private Integer keyIndex;
 
@@ -458,18 +472,20 @@ public class StandardParameterResolver implements ParameterResolver {
 		 */
 		private final String key;
 
-		private ParameterRawValue(String value, boolean explicit, String key) {
+		private ParameterRawValue(String value, boolean explicit, String key, Integer from, Integer to) {
 			this.value = value;
 			this.explicit = explicit;
 			this.key = key;
+			this.from = from;
+			this.to = to;
 		}
 
-		public static ParameterRawValue explicit(String value, String key) {
-			return new ParameterRawValue(value, true, key);
+		public static ParameterRawValue explicit(String value, String key, Integer from, Integer to) {
+			return new ParameterRawValue(value, true, key, from, to);
 		}
 
-		public static ParameterRawValue implicit(String value, String key) {
-			return new ParameterRawValue(value, false, key);
+		public static ParameterRawValue implicit(String value, String key, Integer from, Integer to) {
+			return new ParameterRawValue(value, false, key, from, to);
 		}
 
 		public boolean positional() {
@@ -479,10 +495,12 @@ public class StandardParameterResolver implements ParameterResolver {
 		@Override
 		public String toString() {
 			return "ParameterRawValue{" +
-				"value='" + value + '\'' +
-				", explicit=" + explicit +
-				", key='" + key + '\'' +
-				'}';
+					"value='" + value + '\'' +
+					", explicit=" + explicit +
+					", key='" + key + '\'' +
+					", from=" + from +
+					", to=" + to +
+					'}';
 		}
 	}
 

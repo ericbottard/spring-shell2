@@ -70,13 +70,13 @@ public class JCommanderParameterResolver implements ParameterResolver {
 	}
 
 	@Override
-	public Object resolve(MethodParameter methodParameter, List<String> words) {
+	public JCommanderValueResult resolve(MethodParameter methodParameter, List<String> words) {
 		Object pojo = BeanUtils.instantiateClass(methodParameter.getParameterType());
 		JCommander jCommander = new JCommander();
 		jCommander.addObject(pojo);
 		jCommander.setAcceptUnknownOptions(true);
 		jCommander.parse(words.toArray(new String[words.size()]));
-		return pojo;
+		return new JCommanderValueResult(methodParameter, pojo);
 	}
 
 	@Override
