@@ -19,7 +19,7 @@ import org.springframework.core.MethodParameter;
 import org.springframework.shell2.ValueResult;
 
 /**
- * Standard extension of a {@link ValueResult} that provides key index positions if available.
+ * Standard extension of a {@link ValueResult} that indicates if an explicit key was used or not.
  * 
  * @author Camilo Gonzalez
  */
