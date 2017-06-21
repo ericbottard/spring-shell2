@@ -32,6 +32,7 @@ import org.springframework.shell2.CompletionProposal;
 import org.springframework.shell2.ParameterMissingResolutionException;
 import org.springframework.shell2.UnfinishedParameterResolutionException;
 import org.springframework.shell2.Utils;
+import org.springframework.shell2.ValueResult;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -56,33 +57,45 @@ public class StandardParameterResolverTest {
 	public void testParses() throws Exception {
 		Method method = findMethod(Remote.class, "zap", boolean.class, String.class, String.class, String.class);
 
-		assertThat(resolver.resolve(
-				Utils.createMethodParameter(method, 0),
-				asList("--force --name --foo y".split(" "))
-		)).isEqualTo(true);
-		assertThat(resolver.resolve(
-				Utils.createMethodParameter(method, 1),
-				asList("--force --name --foo y".split(" "))
-		)).isEqualTo("--foo");
-		assertThat(resolver.resolve(
-				Utils.createMethodParameter(method, 2),
-				asList("--force --name --foo y".split(" "))
-		)).isEqualTo("y");
-		assertThat(resolver.resolve(
-				Utils.createMethodParameter(method, 3),
-				asList("--force --name --foo y".split(" "))
-		)).isEqualTo("last");
-
+		StandardValueResult result0 = resolver.resolve(Utils.createMethodParameter(method, 0),
+				asList("--force --name --foo y".split(" ")));
+		assertThat(result0.resolvedValue()).isEqualTo(true);
+		assertThat(result0.firstWordUsed()).isEqualTo(0);
+		assertThat(result0.lastWordUsed()).isEqualTo(0);
+		assertThat(result0.explicitKey()).isEqualTo(true);
+		
+		StandardValueResult result1 = resolver.resolve(Utils.createMethodParameter(method, 1),
+				asList("--force --name --foo y".split(" ")));
+		assertThat(result1.resolvedValue()).isEqualTo("--foo");
+		assertThat(result1.firstWordUsed()).isEqualTo(1);
+		assertThat(result1.lastWordUsed()).isEqualTo(2);
+		assertThat(result1.explicitKey()).isEqualTo(true);
+		
+		StandardValueResult result2 = resolver.resolve(Utils.createMethodParameter(method, 2),
+				asList("--force --name --foo y".split(" ")));
+		assertThat(result2.resolvedValue()).isEqualTo("y");
+		assertThat(result2.firstWordUsed()).isEqualTo(3);
+		assertThat(result2.lastWordUsed()).isEqualTo(3);
+		assertThat(result2.explicitKey()).isEqualTo(false);
+		
+		StandardValueResult result3 = resolver.resolve(Utils.createMethodParameter(method, 3),
+				asList("--force --name --foo y".split(" ")));
+		assertThat(result3.resolvedValue()).isEqualTo("last");
+		assertThat(result3.firstWordUsed()).isNull();
+		assertThat(result3.lastWordUsed()).isNull();
+		assertThat(result3.explicitKey()).isFalse();
 	}
 	
 	@Test
 	public void testParsesWithMethodPrefix() throws Exception {
 		Method method = findMethod(Remote.class, "prefixTest", String.class);
 
-		assertThat(resolver.resolve(
-				Utils.createMethodParameter(method, 0),
-				asList("-message abc".split(" "))
-		)).isEqualTo("abc");
+		StandardValueResult result = resolver.resolve(Utils.createMethodParameter(method, 0),
+				asList("-message abc".split(" ")));
+		assertThat(result.resolvedValue()).isEqualTo("abc");
+		assertThat(result.firstWordUsed()).isEqualTo(0);
+		assertThat(result.lastWordUsed()).isEqualTo(1);
+		assertThat(result.explicitKey()).isEqualTo(true);
 	}
 
 	@Test
