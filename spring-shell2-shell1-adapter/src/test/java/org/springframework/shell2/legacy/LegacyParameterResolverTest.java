@@ -20,6 +20,8 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.shell2.legacy.LegacyCommands.REGISTER_METHOD;
 
+import java.util.List;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -69,38 +71,38 @@ public class LegacyParameterResolverTest {
 	public void resolvesParameterAnnotatedWithCliOption() throws Exception {
 		MethodParameter methodParameter = Utils.createMethodParameter(REGISTER_METHOD, NAME_OR_ANONYMOUS);
 
-		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux", "baz", 2, 3);
+		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux", "baz", 2, 3, false);
 	}
 
 	@Test
 	public void resolvesAnonymousParameterAnnotatedWithCliOption() throws Exception {
 		MethodParameter methodParameter = Utils.createMethodParameter(REGISTER_METHOD, NAME_OR_ANONYMOUS);
 
-		resolveAndAssert(methodParameter, "--foo bar baz --qix bux", "baz", 2, 2);
+		resolveAndAssert(methodParameter, "--foo bar baz --qix bux", "baz", 2, 2, true);
 
-		resolveAndAssert(methodParameter, "baz --foo bar --qix bux", "baz", 0, 0);
+		resolveAndAssert(methodParameter, "baz --foo bar --qix bux", "baz", 0, 0, true);
 	}
 
 	@Test
 	public void usesLegacyConverters() throws Exception {
 		MethodParameter methodParameter = Utils.createMethodParameter(REGISTER_METHOD, TYPE);
 
-		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux --type processor", ArtifactType.processor, 6, 7);
+		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux --type processor", ArtifactType.processor, 6, 7, false);
 	}
 
 	@Test
 	public void testUnspecifiedDefaultValue() throws Exception {
 		MethodParameter methodParameter = Utils.createMethodParameter(REGISTER_METHOD, FORCE);
 
-		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux", false, null, null);
+		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux", false, -1, -1, true);
 	}
 
 	@Test
 	public void testSpecifiedDefaultValue() throws Exception {
 		MethodParameter methodParameter = Utils.createMethodParameter(REGISTER_METHOD, FORCE);
 
-		resolveAndAssert(methodParameter, "--force --foo bar --name baz --qix bux", true, 0, 0);
-		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux --force", true, 6, 6);
+		resolveAndAssert(methodParameter, "--force --foo bar --name baz --qix bux", true, 0, 0, false);
+		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux --force", true, 6, 6, false);
 	}
 
 	@Test
@@ -240,12 +242,18 @@ public class LegacyParameterResolverTest {
 		assertThat(description.help()).isEqualTo(expectedHelp);
 	}
 
-	private Object resolveAndAssert(MethodParameter methodParameter, String command, Object expectedValue, Integer from, Integer to) {
-		ValueResult result = parameterResolver.resolve(methodParameter, asList(command.split(" ")));
+	private ValueResult resolveAndAssert(MethodParameter methodParameter, String command, Object expectedValue, int firstWordIndex, int lastWordIndex,
+			boolean wordsForValuesIsSameAsWords) {
+		List<String> words = asList(command.split(" "));
+		ValueResult result = parameterResolver.resolve(methodParameter, words);
 		assertThat(result.resolvedValue()).isEqualTo(expectedValue);
-		assertThat(result.firstWordUsed()).isEqualTo(from);
-		assertThat(result.lastWordUsed()).isEqualTo(to);
-		return result.resolvedValue();
+		assertThat(result.wordsUsed().nextSetBit(0)).isEqualTo(firstWordIndex);
+		assertThat(result.wordsUsed().previousSetBit(Integer.MAX_VALUE)).isEqualTo(lastWordIndex);
+		assertThat(result.wordsUsed().equals(result.wordsUsedForValue())).isEqualTo(wordsForValuesIsSameAsWords);
+		if (!result.wordsUsedForValue().isEmpty()) {
+			assertThat(result.wordsUsedForValue(words)).containsExactly(expectedValue.toString());
+		}
+		return result;
 	}
 	
 	private Object resolve(MethodParameter methodParameter, String command) {

@@ -57,45 +57,31 @@ public class StandardParameterResolverTest {
 	public void testParses() throws Exception {
 		Method method = findMethod(Remote.class, "zap", boolean.class, String.class, String.class, String.class);
 
-		StandardValueResult result0 = resolver.resolve(Utils.createMethodParameter(method, 0),
-				asList("--force --name --foo y".split(" ")));
-		assertThat(result0.resolvedValue()).isEqualTo(true);
-		assertThat(result0.firstWordUsed()).isEqualTo(0);
-		assertThat(result0.lastWordUsed()).isEqualTo(0);
-		assertThat(result0.explicitKey()).isEqualTo(true);
+		List<String> words = asList("--force --name --foo y".split(" "));
+		ValueResult result0 = resolver.resolve(Utils.createMethodParameter(method, 0), words);
+		assertValueResult(result0, true, 0, 0, false);
+		assertThat(result0.wordsUsed(words)).containsExactly("--force");
 		
-		StandardValueResult result1 = resolver.resolve(Utils.createMethodParameter(method, 1),
-				asList("--force --name --foo y".split(" ")));
-		assertThat(result1.resolvedValue()).isEqualTo("--foo");
-		assertThat(result1.firstWordUsed()).isEqualTo(1);
-		assertThat(result1.lastWordUsed()).isEqualTo(2);
-		assertThat(result1.explicitKey()).isEqualTo(true);
+		ValueResult result1 = resolver.resolve(Utils.createMethodParameter(method, 1), words);
+		assertValueResult(result1, "--foo", 1, 2, false);
+		assertThat(result1.wordsUsed(words)).containsExactly("--name", "--foo");
+		assertThat(result1.wordsUsedForValue(words)).containsExactly("--foo");
 		
-		StandardValueResult result2 = resolver.resolve(Utils.createMethodParameter(method, 2),
-				asList("--force --name --foo y".split(" ")));
-		assertThat(result2.resolvedValue()).isEqualTo("y");
-		assertThat(result2.firstWordUsed()).isEqualTo(3);
-		assertThat(result2.lastWordUsed()).isEqualTo(3);
-		assertThat(result2.explicitKey()).isEqualTo(false);
+		ValueResult result2 = resolver.resolve(Utils.createMethodParameter(method, 2), words);
+		assertValueResult(result2, "y", 3, 3, true);
+		assertThat(result2.wordsUsed(words)).containsExactly("y");
 		
-		StandardValueResult result3 = resolver.resolve(Utils.createMethodParameter(method, 3),
-				asList("--force --name --foo y".split(" ")));
-		assertThat(result3.resolvedValue()).isEqualTo("last");
-		assertThat(result3.firstWordUsed()).isNull();
-		assertThat(result3.lastWordUsed()).isNull();
-		assertThat(result3.explicitKey()).isFalse();
+		ValueResult result3 = resolver.resolve(Utils.createMethodParameter(method, 3), words);
+		assertValueResult(result3, "last", -1, -1, true);
 	}
-	
+
 	@Test
 	public void testParsesWithMethodPrefix() throws Exception {
 		Method method = findMethod(Remote.class, "prefixTest", String.class);
 
-		StandardValueResult result = resolver.resolve(Utils.createMethodParameter(method, 0),
+		ValueResult result = resolver.resolve(Utils.createMethodParameter(method, 0),
 				asList("-message abc".split(" ")));
-		assertThat(result.resolvedValue()).isEqualTo("abc");
-		assertThat(result.firstWordUsed()).isEqualTo(0);
-		assertThat(result.lastWordUsed()).isEqualTo(1);
-		assertThat(result.explicitKey()).isEqualTo(true);
+		assertValueResult(result, "abc", 0, 1, false);
 	}
 
 	@Test
@@ -257,7 +243,13 @@ public class StandardParameterResolverTest {
 		}
 	}
 
-
+	private void assertValueResult(ValueResult result, Object expectedValue, int firstWordIndex, int lastWordIndex,
+			boolean wordsForValuesIsSameAsWords) {
+		assertThat(result.resolvedValue()).isEqualTo(expectedValue);
+		assertThat(result.wordsUsed().nextSetBit(0)).isEqualTo(firstWordIndex);
+		assertThat(result.wordsUsed().previousSetBit(Integer.MAX_VALUE)).isEqualTo(lastWordIndex);
+		assertThat(result.wordsUsed().equals(result.wordsUsedForValue())).isEqualTo(wordsForValuesIsSameAsWords);
+	}
 
 	private CompletionContext contextFor(String input) {
 		DefaultParser defaultParser = new DefaultParser();

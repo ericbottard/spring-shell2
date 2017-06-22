@@ -23,6 +23,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -46,6 +47,7 @@ import org.springframework.shell2.ParameterMissingResolutionException;
 import org.springframework.shell2.ParameterResolver;
 import org.springframework.shell2.UnfinishedParameterResolutionException;
 import org.springframework.shell2.Utils;
+import org.springframework.shell2.ValueResult;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.util.ConcurrentReferenceHashMap;
@@ -106,7 +108,7 @@ public class StandardParameterResolver implements ParameterResolver {
 	}
 
 	@Override
-	public StandardValueResult resolve(MethodParameter methodParameter, List<String> words) {
+	public ValueResult resolve(MethodParameter methodParameter, List<String> words) {
 		String prefix = prefixForMethod(methodParameter.getMethod());
 
 		CacheKey cacheKey = new CacheKey(methodParameter.getMethod(), words);
@@ -194,9 +196,30 @@ public class StandardParameterResolver implements ParameterResolver {
 		}
 		ParameterRawValue parameterRawValue = resolved.get(param);
 		Object value = convertRawValue(parameterRawValue, methodParameter);
-		boolean explicitKey = parameterRawValue.key != null;
-		return new StandardValueResult(methodParameter, value, parameterRawValue.from, parameterRawValue.to,
-				explicitKey);
+		BitSet wordsUsed = getWordsUsed(parameterRawValue);
+		BitSet wordsUsedForValue = getWordsUsedForValue(parameterRawValue);
+		return new ValueResult(methodParameter, value, wordsUsed, wordsUsedForValue);
+	}
+
+	private BitSet getWordsUsed(ParameterRawValue parameterRawValue) {
+		if (parameterRawValue.from != null) {
+			BitSet wordsUsed = new BitSet();
+			wordsUsed.set(parameterRawValue.from, parameterRawValue.to + 1);
+			return wordsUsed;
+		}
+		return null;
+	}
+	
+	private BitSet getWordsUsedForValue(ParameterRawValue parameterRawValue) {
+		if (parameterRawValue.from != null) {
+			BitSet wordsUsedForValue = new BitSet();
+			wordsUsedForValue.set(parameterRawValue.from, parameterRawValue.to + 1);
+			if (parameterRawValue.key != null) {
+				wordsUsedForValue.clear(parameterRawValue.from);
+			}
+			return wordsUsedForValue;
+		}
+		return null;
 	}
 
 	private Object convertRawValue(ParameterRawValue parameterRawValue, MethodParameter methodParameter) {

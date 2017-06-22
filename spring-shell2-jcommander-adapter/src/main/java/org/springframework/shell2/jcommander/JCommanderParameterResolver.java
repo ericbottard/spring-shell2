@@ -33,6 +33,7 @@ import org.springframework.shell2.CompletionContext;
 import org.springframework.shell2.CompletionProposal;
 import org.springframework.shell2.ParameterDescription;
 import org.springframework.shell2.ParameterResolver;
+import org.springframework.shell2.ValueResult;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
@@ -78,10 +79,10 @@ public class JCommanderParameterResolver implements ParameterResolver {
 	}
 
 	@Override
-	public JCommanderValueResult resolve(MethodParameter methodParameter, List<String> words) {
+	public ValueResult resolve(MethodParameter methodParameter, List<String> words) {
 		JCommander jCommander = createJCommander(methodParameter);
 		jCommander.parse(words.toArray(new String[words.size()]));
-		return new JCommanderValueResult(methodParameter, jCommander.getObjects().get(0));
+		return new ValueResult(methodParameter, jCommander.getObjects().get(0), null, null);
 	}
 
 	private JCommander createJCommander(MethodParameter methodParameter) {
