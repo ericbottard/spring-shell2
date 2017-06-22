@@ -16,6 +16,12 @@
 
 package org.springframework.shell2.standard;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.shell2.ValueResultAsserts.assertThat;
+import static org.springframework.util.ReflectionUtils.findMethod;
+
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,7 +31,6 @@ import org.jline.reader.impl.DefaultParser;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.shell2.CompletionContext;
 import org.springframework.shell2.CompletionProposal;
@@ -33,11 +38,6 @@ import org.springframework.shell2.ParameterMissingResolutionException;
 import org.springframework.shell2.UnfinishedParameterResolutionException;
 import org.springframework.shell2.Utils;
 import org.springframework.shell2.ValueResult;
-
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.util.ReflectionUtils.findMethod;
 
 /**
  * Unit tests for DefaultParameterResolver.
@@ -59,20 +59,20 @@ public class StandardParameterResolverTest {
 
 		List<String> words = asList("--force --name --foo y".split(" "));
 		ValueResult result0 = resolver.resolve(Utils.createMethodParameter(method, 0), words);
-		assertValueResult(result0, true, 0, 0, false);
+		assertThat(result0).hasValue(true).usesWords(0).notUsesWordsForValue();
 		assertThat(result0.wordsUsed(words)).containsExactly("--force");
 		
 		ValueResult result1 = resolver.resolve(Utils.createMethodParameter(method, 1), words);
-		assertValueResult(result1, "--foo", 1, 2, false);
+		assertThat(result1).hasValue("--foo").usesWords(1, 2).usesWordsForValue(2);
 		assertThat(result1.wordsUsed(words)).containsExactly("--name", "--foo");
 		assertThat(result1.wordsUsedForValue(words)).containsExactly("--foo");
 		
 		ValueResult result2 = resolver.resolve(Utils.createMethodParameter(method, 2), words);
-		assertValueResult(result2, "y", 3, 3, true);
+		assertThat(result2).hasValue("y").usesWords(3).usesWordsForValue(3);
 		assertThat(result2.wordsUsed(words)).containsExactly("y");
 		
 		ValueResult result3 = resolver.resolve(Utils.createMethodParameter(method, 3), words);
-		assertValueResult(result3, "last", -1, -1, true);
+		assertThat(result3).hasValue("last").notUsesWords().notUsesWordsForValue();
 	}
 
 	@Test
@@ -81,7 +81,7 @@ public class StandardParameterResolverTest {
 
 		ValueResult result = resolver.resolve(Utils.createMethodParameter(method, 0),
 				asList("-message abc".split(" ")));
-		assertValueResult(result, "abc", 0, 1, false);
+		assertThat(result).hasValue("abc").usesWords(0, 1).usesWordsForValue(1);
 	}
 
 	@Test
@@ -241,14 +241,6 @@ public class StandardParameterResolverTest {
 					.stream().map(CompletionProposal::value).collect(Collectors.toList());
 			assertThat(completions).isEmpty(); // All 3 have already been set
 		}
-	}
-
-	private void assertValueResult(ValueResult result, Object expectedValue, int firstWordIndex, int lastWordIndex,
-			boolean wordsForValuesIsSameAsWords) {
-		assertThat(result.resolvedValue()).isEqualTo(expectedValue);
-		assertThat(result.wordsUsed().nextSetBit(0)).isEqualTo(firstWordIndex);
-		assertThat(result.wordsUsed().previousSetBit(Integer.MAX_VALUE)).isEqualTo(lastWordIndex);
-		assertThat(result.wordsUsed().equals(result.wordsUsedForValue())).isEqualTo(wordsForValuesIsSameAsWords);
 	}
 
 	private CompletionContext contextFor(String input) {

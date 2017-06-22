@@ -18,15 +18,13 @@ package org.springframework.shell2.legacy;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.shell2.ValueResultAsserts.assertThat;
 import static org.springframework.shell2.legacy.LegacyCommands.REGISTER_METHOD;
-
-import java.util.List;
 
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -71,38 +69,46 @@ public class LegacyParameterResolverTest {
 	public void resolvesParameterAnnotatedWithCliOption() throws Exception {
 		MethodParameter methodParameter = Utils.createMethodParameter(REGISTER_METHOD, NAME_OR_ANONYMOUS);
 
-		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux", "baz", 2, 3, false);
+		assertThat(resolve(methodParameter, "--foo bar --name baz --qix bux")).hasValue("baz").usesWords(2, 3)
+				.usesWordsForValue(3);
 	}
 
 	@Test
 	public void resolvesAnonymousParameterAnnotatedWithCliOption() throws Exception {
 		MethodParameter methodParameter = Utils.createMethodParameter(REGISTER_METHOD, NAME_OR_ANONYMOUS);
 
-		resolveAndAssert(methodParameter, "--foo bar baz --qix bux", "baz", 2, 2, true);
+		assertThat(resolve(methodParameter, "--foo bar baz --qix bux")).hasValue("baz").usesWords(2)
+				.usesWordsForValue(2);
 
-		resolveAndAssert(methodParameter, "baz --foo bar --qix bux", "baz", 0, 0, true);
+		assertThat(resolve(methodParameter, "baz --foo bar --qix bux")).hasValue("baz").usesWords(0)
+				.usesWordsForValue(0);
 	}
 
 	@Test
 	public void usesLegacyConverters() throws Exception {
 		MethodParameter methodParameter = Utils.createMethodParameter(REGISTER_METHOD, TYPE);
 
-		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux --type processor", ArtifactType.processor, 6, 7, false);
+		assertThat(resolve(methodParameter, "--foo bar --name baz --qix bux --type processor"))
+				.hasValue(ArtifactType.processor).usesWords(6, 7).usesWordsForValue(7);
 	}
 
 	@Test
 	public void testUnspecifiedDefaultValue() throws Exception {
 		MethodParameter methodParameter = Utils.createMethodParameter(REGISTER_METHOD, FORCE);
 
-		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux", false, -1, -1, true);
+		assertThat(resolve(methodParameter, "--foo bar --name baz --qix bux"))
+				.hasValue(false).notUsesWords().notUsesWordsForValue();
 	}
 
 	@Test
 	public void testSpecifiedDefaultValue() throws Exception {
 		MethodParameter methodParameter = Utils.createMethodParameter(REGISTER_METHOD, FORCE);
 
-		resolveAndAssert(methodParameter, "--force --foo bar --name baz --qix bux", true, 0, 0, false);
-		resolveAndAssert(methodParameter, "--foo bar --name baz --qix bux --force", true, 6, 6, false);
+		assertThat(resolve(methodParameter, "--force --foo bar --name baz --qix bux"))
+				.hasValue(true).usesWords(0).notUsesWordsForValue();
+
+		assertThat(resolve(methodParameter, "--foo bar --name baz --qix bux --force"))
+				.hasValue(true).usesWords(6).notUsesWordsForValue();
 	}
 
 	@Test
@@ -110,7 +116,8 @@ public class LegacyParameterResolverTest {
 		MethodParameter methodParameter = Utils.createMethodParameter(REGISTER_METHOD, COORDINATES);
 
 		thrown.expect(IllegalArgumentException.class);
-		thrown.expectMessage("Could not find parameter values for [--coordinates, --coords] in [--force, --foo, bar, --name, baz, --qix, bux]");
+		thrown.expectMessage(
+				"Could not find parameter values for [--coordinates, --coords] in [--force, --foo, bar, --name, baz, --qix, bux]");
 		resolve(methodParameter, "--force --foo bar --name baz --qix bux");
 	}
 
@@ -149,116 +156,102 @@ public class LegacyParameterResolverTest {
 		thrown.expectMessage("No converter found for --v2 from '42' to type int");
 		resolve(methodParameter, "--v1 1 --v2");
 	}
-	
+
 	@Test
 	public void testDescribeBothDefaultsNotDeclared() {
 		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.REGISTER_METHOD, 1);
-		
+
 		ParameterDescription description = parameterResolver.describe(methodParameter);
-		
+
 		assertThat(description.keys()).containsExactly("--type");
 		assertThat(description.formal()).isEqualTo(Utils.unCamelify(ArtifactType.class.getSimpleName()));
 		assertThat(description.defaultValue().isPresent()).isFalse();
 		assertThat(description.mandatoryKey()).isTrue();
-		
+
 		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
 		assertThat(description.help()).isEqualTo(expectedHelp);
 	}
-	
+
 	@Test
 	public void testDescribeBothDefaultsDeclared() {
 		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.SOME_METHOD, 1);
-		
+
 		ParameterDescription description = parameterResolver.describe(methodParameter);
-		
+
 		assertThat(description.keys()).containsExactly("--option");
 		assertThat(description.formal()).isEqualTo(boolean.class.getName());
 		assertThat(description.defaultValue().get()).isEqualTo("false");
 		assertThat(description.defaultValueWhenFlag().get()).isEqualTo("true");
 		assertThat(description.mandatoryKey()).isTrue();
-		
+
 		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
 		assertThat(description.help()).isEqualTo(expectedHelp);
 	}
-	
+
 	@Test
 	public void testDescribeOnlySpecifiedDefaultDeclared() {
 		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.SUM_METHOD, 1);
-		
+
 		ParameterDescription description = parameterResolver.describe(methodParameter);
-		
+
 		assertThat(description.keys()).containsExactly("--v2");
 		assertThat(description.formal()).isEqualTo(int.class.getName());
 		assertThat(description.defaultValue().get()).isEqualTo("null");
 		assertThat(description.defaultValueWhenFlag().get()).isEqualTo("42");
 		assertThat(description.mandatoryKey()).isTrue();
-		
-		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
-		assertThat(description.help()).isEqualTo(expectedHelp);
-	}
-	
-	@Test
-	public void testDescribeOnlyUnspecifiedDefaultDeclared() {
-		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.SUM_METHOD, 0);
-		
-		ParameterDescription description = parameterResolver.describe(methodParameter);
-		
-		assertThat(description.keys()).containsExactly("--v1");
-		assertThat(description.formal()).isEqualTo(int.class.getName());
-		assertThat(description.defaultValue().get()).isEqualTo("38");
-		assertThat(description.mandatoryKey()).isTrue();
-		
-		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
-		assertThat(description.help()).isEqualTo(expectedHelp);
-	}
-	
-	@Test
-	public void testDescribeDefaultKey() {
-		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.LEGACY_ECHO_METHOD, 0);
-		
-		ParameterDescription description = parameterResolver.describe(methodParameter);
-		
-		assertThat(description.keys()).isEmpty();
-		assertThat(description.formal()).isEqualTo(Utils.unCamelify(String.class.getSimpleName()));
-		assertThat(description.defaultValue().isPresent()).isFalse();
-		assertThat(description.mandatoryKey()).isFalse();
-		
-		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
-		assertThat(description.help()).isEqualTo(expectedHelp);
-	}
-	
-	@Test
-	public void testDescribeNonMandatoryNoDefaults() {
-		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.SOME_METHOD, 0);
-		
-		ParameterDescription description = parameterResolver.describe(methodParameter);
-		
-		assertThat(description.keys()).containsExactly("--key");
-		assertThat(description.formal()).isEqualTo(Utils.unCamelify(String.class.getSimpleName()));
-		assertThat(description.defaultValue().get()).isEqualTo("null");
-		assertThat(description.mandatoryKey()).isTrue();
-		
+
 		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
 		assertThat(description.help()).isEqualTo(expectedHelp);
 	}
 
-	private ValueResult resolveAndAssert(MethodParameter methodParameter, String command, Object expectedValue, int firstWordIndex, int lastWordIndex,
-			boolean wordsForValuesIsSameAsWords) {
-		List<String> words = asList(command.split(" "));
-		ValueResult result = parameterResolver.resolve(methodParameter, words);
-		assertThat(result.resolvedValue()).isEqualTo(expectedValue);
-		assertThat(result.wordsUsed().nextSetBit(0)).isEqualTo(firstWordIndex);
-		assertThat(result.wordsUsed().previousSetBit(Integer.MAX_VALUE)).isEqualTo(lastWordIndex);
-		assertThat(result.wordsUsed().equals(result.wordsUsedForValue())).isEqualTo(wordsForValuesIsSameAsWords);
-		if (!result.wordsUsedForValue().isEmpty()) {
-			assertThat(result.wordsUsedForValue(words)).containsExactly(expectedValue.toString());
-		}
-		return result;
+	@Test
+	public void testDescribeOnlyUnspecifiedDefaultDeclared() {
+		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.SUM_METHOD, 0);
+
+		ParameterDescription description = parameterResolver.describe(methodParameter);
+
+		assertThat(description.keys()).containsExactly("--v1");
+		assertThat(description.formal()).isEqualTo(int.class.getName());
+		assertThat(description.defaultValue().get()).isEqualTo("38");
+		assertThat(description.mandatoryKey()).isTrue();
+
+		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
+		assertThat(description.help()).isEqualTo(expectedHelp);
 	}
-	
-	private Object resolve(MethodParameter methodParameter, String command) {
+
+	@Test
+	public void testDescribeDefaultKey() {
+		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.LEGACY_ECHO_METHOD, 0);
+
+		ParameterDescription description = parameterResolver.describe(methodParameter);
+
+		assertThat(description.keys()).isEmpty();
+		assertThat(description.formal()).isEqualTo(Utils.unCamelify(String.class.getSimpleName()));
+		assertThat(description.defaultValue().isPresent()).isFalse();
+		assertThat(description.mandatoryKey()).isFalse();
+
+		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
+		assertThat(description.help()).isEqualTo(expectedHelp);
+	}
+
+	@Test
+	public void testDescribeNonMandatoryNoDefaults() {
+		MethodParameter methodParameter = Utils.createMethodParameter(LegacyCommands.SOME_METHOD, 0);
+
+		ParameterDescription description = parameterResolver.describe(methodParameter);
+
+		assertThat(description.keys()).containsExactly("--key");
+		assertThat(description.formal()).isEqualTo(Utils.unCamelify(String.class.getSimpleName()));
+		assertThat(description.defaultValue().get()).isEqualTo("null");
+		assertThat(description.mandatoryKey()).isTrue();
+
+		String expectedHelp = methodParameter.getParameterAnnotation(CliOption.class).help();
+		assertThat(description.help()).isEqualTo(expectedHelp);
+	}
+
+	private ValueResult resolve(MethodParameter methodParameter, String command) {
 		ValueResult result = parameterResolver.resolve(methodParameter, asList(command.split(" ")));
-		return result.resolvedValue();
+		return result;
 	}
 
 	@Configuration
