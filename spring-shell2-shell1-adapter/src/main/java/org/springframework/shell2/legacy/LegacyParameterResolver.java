@@ -19,6 +19,7 @@ package org.springframework.shell2.legacy;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +36,7 @@ import org.springframework.shell2.CompletionContext;
 import org.springframework.shell2.CompletionProposal;
 import org.springframework.shell2.ParameterDescription;
 import org.springframework.shell2.ParameterResolver;
+import org.springframework.shell2.ValueResult;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 
@@ -63,14 +65,14 @@ public class LegacyParameterResolver implements ParameterResolver {
 	}
 
 	@Override
-	public LegacyValueResult resolve(MethodParameter methodParameter, List<String> words) {
+	public ValueResult resolve(MethodParameter methodParameter, List<String> words) {
 		CliOption cliOption = methodParameter.getParameterAnnotation(CliOption.class);
 		Optional<Converter<?>> converter = converters.stream()
 				.filter(c -> c.supports(methodParameter.getParameterType(), cliOption.optionContext()))
 				.findFirst();
 
 		Map<String, ParseResult> values = parseOptions(words);
-		Map<String, LegacyValueResult> seenValues = convertValues(values, methodParameter, converter);
+		Map<String, ValueResult> seenValues = convertValues(values, methodParameter, converter);
 		switch (seenValues.size()) {
 			case 0:
 				if (!cliOption.mandatory()) {
@@ -79,7 +81,7 @@ public class LegacyParameterResolver implements ParameterResolver {
 							.orElseThrow(noConverterFound(cliOption.key()[0], value, methodParameter.getParameterType()))
 							.convertFromText(value, methodParameter.getParameterType(), cliOption.optionContext());
 					
-					return new LegacyValueResult(methodParameter, resolvedValue, null, null);
+					return new ValueResult(methodParameter, resolvedValue, null, null);
 				}
 				else {
 					throw new IllegalArgumentException("Could not find parameter values for " + prettifyKeys(Arrays.asList(cliOption.key())) + " in " + words);
@@ -138,8 +140,8 @@ public class LegacyParameterResolver implements ParameterResolver {
 		return values;
 	}
 
-	private Map<String, LegacyValueResult> convertValues(Map<String, ParseResult> values, MethodParameter methodParameter, Optional<Converter<?>> converter) {
-		Map<String, LegacyValueResult> seenValues = new HashMap<>();
+	private Map<String, ValueResult> convertValues(Map<String, ParseResult> values, MethodParameter methodParameter, Optional<Converter<?>> converter) {
+		Map<String, ValueResult> seenValues = new HashMap<>();
 		CliOption option = methodParameter.getParameterAnnotation(CliOption.class);
 		for (String key : option.key()) {
 			if (values.containsKey(key)) {
@@ -154,7 +156,13 @@ public class LegacyParameterResolver implements ParameterResolver {
 						.convertFromText(value, parameterType, option.optionContext());
 				int from = parseResult.from;
 				int to = key.isEmpty() || parseResult.value == null ? from : from + 1;
-				seenValues.put(key, new LegacyValueResult(methodParameter, resolvedValue, from, to));
+				BitSet wordsUsed = new BitSet();
+				wordsUsed.set(from, to + 1);
+				BitSet wordsUsedForValues = new BitSet();
+				if (parseResult.value != null) {
+					wordsUsedForValues.set(to);
+				}
+				seenValues.put(key, new ValueResult(methodParameter, resolvedValue, wordsUsed, wordsUsedForValues));
 			}
 		}
 		return seenValues;

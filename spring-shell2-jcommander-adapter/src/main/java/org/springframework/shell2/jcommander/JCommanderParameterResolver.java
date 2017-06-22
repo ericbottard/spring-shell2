@@ -22,18 +22,19 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.beust.jcommander.DynamicParameter;
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import org.springframework.beans.BeanUtils;
 import org.springframework.core.MethodParameter;
 import org.springframework.shell2.CompletionContext;
 import org.springframework.shell2.CompletionProposal;
 import org.springframework.shell2.ParameterDescription;
 import org.springframework.shell2.ParameterResolver;
+import org.springframework.shell2.ValueResult;
 import org.springframework.util.ReflectionUtils;
+
+import com.beust.jcommander.DynamicParameter;
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 /**
  * Provides integration with JCommander.
@@ -70,13 +71,13 @@ public class JCommanderParameterResolver implements ParameterResolver {
 	}
 
 	@Override
-	public JCommanderValueResult resolve(MethodParameter methodParameter, List<String> words) {
+	public ValueResult resolve(MethodParameter methodParameter, List<String> words) {
 		Object pojo = BeanUtils.instantiateClass(methodParameter.getParameterType());
 		JCommander jCommander = new JCommander();
 		jCommander.addObject(pojo);
 		jCommander.setAcceptUnknownOptions(true);
 		jCommander.parse(words.toArray(new String[words.size()]));
-		return new JCommanderValueResult(methodParameter, pojo);
+		return new ValueResult(methodParameter, pojo, null, null);
 	}
 
 	@Override
