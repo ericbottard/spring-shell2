@@ -39,11 +39,7 @@ public class ValueResult {
 	private final BitSet wordsUsedForValue;
 
 	public ValueResult(MethodParameter methodParameter, Object resolvedValue) {
-		
-		this.methodParameter = methodParameter;
-		this.resolvedValue = resolvedValue;
-		this.wordsUsed = new BitSet();
-		this.wordsUsedForValue = new BitSet();
+		this(methodParameter, resolvedValue, new BitSet(), new BitSet());
 	}
 	
 	public ValueResult(MethodParameter methodParameter, Object resolvedValue, BitSet wordsUsed,
