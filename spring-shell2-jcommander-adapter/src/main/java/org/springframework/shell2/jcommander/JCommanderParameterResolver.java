@@ -77,7 +77,7 @@ public class JCommanderParameterResolver implements ParameterResolver {
 		jCommander.addObject(pojo);
 		jCommander.setAcceptUnknownOptions(true);
 		jCommander.parse(words.toArray(new String[words.size()]));
-		return new ValueResult(methodParameter, pojo, null, null);
+		return new ValueResult(methodParameter, pojo);
 	}
 
 	@Override
