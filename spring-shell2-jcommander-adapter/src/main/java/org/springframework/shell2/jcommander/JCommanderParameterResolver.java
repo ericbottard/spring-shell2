@@ -82,7 +82,7 @@ public class JCommanderParameterResolver implements ParameterResolver {
 	public ValueResult resolve(MethodParameter methodParameter, List<String> words) {
 		JCommander jCommander = createJCommander(methodParameter);
 		jCommander.parse(words.toArray(new String[words.size()]));
-		return new ValueResult(methodParameter, jCommander.getObjects().get(0), null, null);
+		return new ValueResult(methodParameter, jCommander.getObjects().get(0));
 	}
 
 	private JCommander createJCommander(MethodParameter methodParameter) {

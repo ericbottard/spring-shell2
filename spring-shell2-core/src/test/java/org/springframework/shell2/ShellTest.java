@@ -69,7 +69,7 @@ public class ShellTest {
 	public void commandMatch() throws IOException {
 		when(parameterResolver.supports(any())).thenReturn(true);
 		when(inputProvider.readInput()).thenReturn(() -> "hello world how are you doing ?");
-		valueResult = new ValueResult(null, "test", null, null);
+		valueResult = new ValueResult(null, "test");
 		when(parameterResolver.resolve(any(), any())).thenReturn(valueResult);
 		doThrow(new Exit()).when(resultHandler).handleResult(any());
 
@@ -106,7 +106,7 @@ public class ShellTest {
 	public void noCommand() throws IOException {
 		when(parameterResolver.supports(any())).thenReturn(true);
 		when(inputProvider.readInput()).thenReturn(() -> "", () -> "hello world how are you doing ?");
-		valueResult = new ValueResult(null, "test", null, null);
+		valueResult = new ValueResult(null, "test");
 		when(parameterResolver.resolve(any(), any())).thenReturn(valueResult);
 		doThrow(new Exit()).when(resultHandler).handleResult(any());
 

@@ -82,7 +82,7 @@ public class LegacyParameterResolver implements ParameterResolver {
 							.orElseThrow(noConverterFound(cliOption.key()[0], value, methodParameter.getParameterType()))
 							.convertFromText(value, methodParameter.getParameterType(), cliOption.optionContext());
 					
-					return new ValueResult(methodParameter, resolvedValue, null, null);
+					return new ValueResult(methodParameter, resolvedValue);
 				}
 				else {
 					throw new IllegalArgumentException("Could not find parameter values for " + prettifyKeys(Arrays.asList(cliOption.key())) + " in " + words);
