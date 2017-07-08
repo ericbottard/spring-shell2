@@ -15,6 +15,10 @@
  */
 package org.springframework.shell2;
 
+import java.util.BitSet;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import javax.naming.spi.ResolveResult;
 
 import org.springframework.core.MethodParameter;
@@ -30,15 +34,21 @@ public class ValueResult {
 
 	private final Object resolvedValue;
 
-	private final Integer fromWord;
+	private final BitSet wordsUsed;
 
-	private final Integer toWord;
+	private final BitSet wordsUsedForValue;
 
-	public ValueResult(MethodParameter methodParameter, Object resolvedValue, Integer fromWord, Integer toWord) {
+	public ValueResult(MethodParameter methodParameter, Object resolvedValue) {
+		this(methodParameter, resolvedValue, new BitSet(), new BitSet());
+	}
+	
+	public ValueResult(MethodParameter methodParameter, Object resolvedValue, BitSet wordsUsed,
+			BitSet wordsUsedForValue) {
+		
 		this.methodParameter = methodParameter;
 		this.resolvedValue = resolvedValue;
-		this.fromWord = fromWord;
-		this.toWord = toWord;
+		this.wordsUsed = wordsUsed == null ? new BitSet() : wordsUsed;
+		this.wordsUsedForValue = wordsUsedForValue == null ? new BitSet() : wordsUsedForValue;
 	}
 
 	/**
@@ -57,19 +67,26 @@ public class ValueResult {
 	}
 
 	/**
-	 * The index of the first input word used by the {@link ParameterResolver}. null indicates that
-	 * no words were used (e.g. default values).
+	 * Represents the full set of words used to resolve the {@link MethodParameter}. This includes
+	 * any tags/keys consumed from the input.
 	 */
-	public Integer firstWordUsed() {
-		return fromWord;
+	public BitSet wordsUsed() {
+		return wordsUsed;
 	}
 
 	/**
-	 * The index of the last input word used by the {@link ParameterResolver}. null indicates that
-	 * no words were used (e.g. default values).
+	 * Represents the full set of words used to resolve the value of this {@link MethodParameter}.
 	 */
-	public Integer lastWordUsed() {
-		return toWord;
+	public BitSet wordsUsedForValue() {
+		return wordsUsedForValue;
+	}
+
+	public List<String> wordsUsed(List<String> words) {
+		return wordsUsed.stream().mapToObj(index -> words.get(index)).collect(Collectors.toList());
+	}
+
+	public List<String> wordsUsedForValue(List<String> words) {
+		return wordsUsedForValue.stream().mapToObj(index -> words.get(index)).collect(Collectors.toList());
 	}
 
 }
