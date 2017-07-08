@@ -16,7 +16,6 @@
 
 package org.springframework.shell2.standard;
 
-import static org.springframework.util.StringUtils.collectionToCommaDelimitedString;
 import static org.springframework.util.StringUtils.collectionToDelimitedString;
 
 import java.util.HashMap;
@@ -27,9 +26,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.shell2.MethodTarget;
 import org.springframework.shell2.MethodTargetResolver;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.ReflectionUtils;
-import org.springframework.util.StringUtils;
 
 /**
  * The standard implementation of {@link MethodTargetResolver} for new shell applications,

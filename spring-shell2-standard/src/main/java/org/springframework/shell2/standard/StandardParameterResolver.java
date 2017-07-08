@@ -106,83 +106,92 @@ public class StandardParameterResolver implements ParameterResolver {
 
 	@Override
 	public Object resolve(MethodParameter methodParameter, List<String> words) {
-		String prefix = prefixForMethod(methodParameter.getMethod());
+		Method method = methodParameter.getMethod();
 
-		CacheKey cacheKey = new CacheKey(methodParameter.getMethod(), words);
+		CacheKey cacheKey = new CacheKey(method, words);
 		Map<Parameter, ParameterRawValue> resolved = parameterCache.computeIfAbsent(cacheKey, (k) -> {
-
-			Map<Parameter, ParameterRawValue> result = new HashMap<>();
-			Map<String, String> namedParameters = new HashMap<>();
-			List<String> positionalValues = new ArrayList<>();
-
-			Set<String> possibleKeys = gatherAllPossibleKeys(methodParameter.getMethod());
-
-			// First, resolve all parameters passed by-name
-			for (int i = 0; i < words.size(); i++) {
-				String word = words.get(i);
-				if (possibleKeys.contains(word)) {
-					String key = word;
-					Parameter parameter = lookupParameterForKey(methodParameter.getMethod(), key, prefix);
-					int arity = getArity(parameter);
-
-					if (i + 1 + arity > words.size()) {
-						String input = words.subList(i, words.size()).stream().collect(Collectors.joining(" "));
-						throw new UnfinishedParameterResolutionException(describe(Utils.createMethodParameter(parameter)).findFirst().get(), input);
-					}
-					Assert.isTrue(i + 1 + arity <= words.size(), String.format("Not enough input for parameter '%s'", word));
-					String raw = words.subList(i + 1, i + 1 + arity).stream().collect(Collectors.joining(","));
-					Assert.isTrue(!namedParameters.containsKey(key), String.format("Parameter for '%s' has already been specified", word));
-					namedParameters.put(key, raw);
-					result.put(parameter, ParameterRawValue.explicit(raw, key));
-					i += arity;
-					if (arity == 0) {
-						boolean defaultValue = booleanDefaultValue(parameter);
-						// Boolean parameter has been specified. Use the opposite of the default value
-						result.put(parameter, ParameterRawValue.explicit(String.valueOf(!defaultValue), key));
-					}
-				} // store for later processing of positional params
-				else {
-					positionalValues.add(word);
-				}
-			}
-
-			// Now have a second pass over params and treat them as positional
-			int offset = 0;
-			Parameter[] parameters = methodParameter.getMethod().getParameters();
-			for (int i = 0, parametersLength = parameters.length; i < parametersLength; i++) {
-				Parameter parameter = parameters[i];
-				// Compute the intersection between possible keys for the param and what we've already seen for named params
-				Collection<String> keys = getKeysForParameter(methodParameter.getMethod(), i).collect(Collectors.toSet());
-				Collection<String> copy = new HashSet<>(keys);
-				copy.retainAll(namedParameters.keySet());
-				if (copy.isEmpty()) { // Was not set via a key (including aliases), must be positional
-					int arity = getArity(parameter);
-					if (arity > 0 && (offset + arity) <= positionalValues.size()) {
-						String raw = positionalValues.subList(offset, offset + arity).stream().collect(Collectors.joining(","));
-						result.put(parameter, ParameterRawValue.explicit(raw, null));
-						offset += arity;
-					} // No more input. Try defaultValues
-					else {
-						Optional<String> defaultValue = defaultValueFor(parameter);
-						defaultValue.ifPresent(value -> result.put(parameter, ParameterRawValue.implicit(value, null)));
-					}
-				}
-				else if (copy.size() > 1) {
-					throw new IllegalArgumentException("Named parameter has been specified multiple times via " + quote(copy));
-				}
-			}
-
-			Assert.isTrue(offset == positionalValues.size(), "Too many arguments: the following could not be mapped to parameters: "
-					+ positionalValues.subList(offset, positionalValues.size()).stream().collect(Collectors.joining(" ", "'", "'")));
-			return result;
+			return resolveAll(method, words);
 		});
 
-		Parameter param = methodParameter.getMethod().getParameters()[methodParameter.getParameterIndex()];
+		Parameter param = method.getParameters()[methodParameter.getParameterIndex()];
 		if (!resolved.containsKey(param)) {
 			throw new ParameterMissingResolutionException(describe(methodParameter).findFirst().get());
 		}
 		ParameterRawValue parameterRawValue = resolved.get(param);
 		return convertRawValue(parameterRawValue, methodParameter);
+	}
+
+	private Map<Parameter, ParameterRawValue> resolveAll(Method method, List<String> words) {
+		Map<Parameter, ParameterRawValue> result = new HashMap<>();
+		Map<String, String> namedParameters = new HashMap<>();
+		List<String> positionalValues = new ArrayList<>();
+		String prefix = prefixForMethod(method);
+
+		Set<String> possibleKeys = gatherAllPossibleKeys(method);
+
+		// First, resolve all parameters passed by-name
+		for (int i = 0; i < words.size(); i++) {
+			String word = words.get(i);
+			if (possibleKeys.contains(word)) {
+				String key = word;
+				Parameter parameter = lookupParameterForKey(method, key, prefix);
+				int arity = getArity(parameter);
+
+				if (i + 1 + arity > words.size()) {
+					String input = words.subList(i, words.size()).stream().collect(Collectors.joining(" "));
+					throw new UnfinishedParameterResolutionException(describe(Utils.createMethodParameter(parameter)).findFirst().get(), input);
+				}
+				Assert.isTrue(i + 1 + arity <= words.size(), String.format("Not enough input for parameter '%s'", word));
+				String raw = words.subList(i + 1, i + 1 + arity).stream().collect(Collectors.joining(","));
+				Assert.isTrue(!namedParameters.containsKey(key), String.format("Parameter for '%s' has already been specified", word));
+				namedParameters.put(key, raw);
+				result.put(parameter, ParameterRawValue.explicit(raw, key));
+				i += arity;
+				if (arity == 0) {
+					boolean defaultValue = booleanDefaultValue(parameter);
+					// Boolean parameter has been specified. Use the opposite of the default value
+					result.put(parameter, ParameterRawValue.explicit(String.valueOf(!defaultValue), key));
+				}
+			} // store for later processing of positional params
+			else {
+				positionalValues.add(word);
+			}
+		}
+
+		// Now have a second pass over params and treat them as positional
+		int offset = 0;
+		Parameter[] parameters = method.getParameters();
+		for (int i = 0, parametersLength = parameters.length; i < parametersLength; i++) {
+			Parameter parameter = parameters[i];
+			// Compute the intersection between possible keys for the param and what we've already seen for named params
+			Collection<String> keys = getKeysForParameter(method, i).collect(Collectors.toSet());
+			Collection<String> copy = new HashSet<>(keys);
+			copy.retainAll(namedParameters.keySet());
+			if (copy.isEmpty()) { // Was not set via a key (including aliases), must be positional
+				int arity = getArity(parameter);
+				if (arity > 0 && (offset + arity) <= positionalValues.size()) {
+					String raw = positionalValues.subList(offset, offset + arity).stream().collect(Collectors.joining(","));
+					result.put(parameter, ParameterRawValue.explicit(raw, null));
+					offset += arity;
+				} // No more input. Try defaultValues
+				else {
+					if (arity == 0) {
+						boolean defaultValue = booleanDefaultValue(parameter);
+						result.put(parameter, ParameterRawValue.implicit(String.valueOf(defaultValue), null));
+					} else {
+						Optional<String> defaultValue = defaultValueFor(parameter);
+						defaultValue.ifPresent(value -> result.put(parameter, ParameterRawValue.implicit(value, null)));
+					}
+				}
+			}
+			else if (copy.size() > 1) {
+				throw new IllegalArgumentException("Named parameter has been specified multiple times via " + quote(copy));
+			}
+		}
+
+		Assert.isTrue(offset == positionalValues.size(), "Too many arguments: the following could not be mapped to parameters: "
+				+ positionalValues.subList(offset, positionalValues.size()).stream().collect(Collectors.joining(" ", "'", "'")));
+		return result;
 	}
 
 	private Object convertRawValue(ParameterRawValue parameterRawValue, MethodParameter methodParameter) {
@@ -250,9 +259,14 @@ public class StandardParameterResolver implements ParameterResolver {
 		result.formal(sb.toString());
 		if (option != null) {
 			result.help(option.help());
-			Optional<String> defaultValue = defaultValueFor(jlrParameter);
-			if (defaultValue.isPresent()) {
-				result.defaultValue(defaultValue.map(dv -> dv.equals(ShellOption.NULL) ? "<none>" : dv).get());
+			if (arity > 0) {
+				Optional<String> defaultValue = defaultValueFor(jlrParameter);
+				if (defaultValue.isPresent()) {
+					result.defaultValue(defaultValue.map(dv -> dv.equals(ShellOption.NULL) ? "<none>" : dv).get());
+				}
+			} else {
+				result.defaultValue(String.valueOf(booleanDefaultValue(jlrParameter)));
+				result.whenFlag(String.valueOf(!booleanDefaultValue(jlrParameter)));
 			}
 		}
 		result
@@ -435,14 +449,6 @@ public class StandardParameterResolver implements ParameterResolver {
 	}
 
 	private static class ParameterRawValue {
-
-		private CompletionContext context;
-
-		private int from;
-
-		private int to;
-
-		private Integer keyIndex;
 
 		/**
 		 * The raw String value that got bound to a parameter.
