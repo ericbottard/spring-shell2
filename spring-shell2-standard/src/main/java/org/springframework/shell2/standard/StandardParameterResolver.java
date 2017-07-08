@@ -259,9 +259,14 @@ public class StandardParameterResolver implements ParameterResolver {
 		result.formal(sb.toString());
 		if (option != null) {
 			result.help(option.help());
-			Optional<String> defaultValue = defaultValueFor(jlrParameter);
-			if (defaultValue.isPresent()) {
-				result.defaultValue(defaultValue.map(dv -> dv.equals(ShellOption.NULL) ? "<none>" : dv).get());
+			if (arity > 0) {
+				Optional<String> defaultValue = defaultValueFor(jlrParameter);
+				if (defaultValue.isPresent()) {
+					result.defaultValue(defaultValue.map(dv -> dv.equals(ShellOption.NULL) ? "<none>" : dv).get());
+				}
+			} else {
+				result.defaultValue(String.valueOf(booleanDefaultValue(jlrParameter)));
+				result.whenFlag(String.valueOf(!booleanDefaultValue(jlrParameter)));
 			}
 		}
 		result

@@ -103,8 +103,10 @@ public class Help {
 		List<ParameterDescription> parameterDescriptions = getParameterDescriptions(methodTarget);
 
 		for (ParameterDescription description : parameterDescriptions) {
-
-			if (description.defaultValue().isPresent()) {
+		    boolean formalEmpty = description.formal().isEmpty();
+		    
+		    
+			if (description.defaultValue().isPresent() && !formalEmpty) {
 				result.append("["); // Whole parameter is optional, as there is a default value (1)
 			}
 			List<String> keys = description.keys();
@@ -120,14 +122,17 @@ public class Help {
 					result.append(" ");
 				}
 			}
-			if (description.defaultValueWhenFlag().isPresent()) {
-				result.append("["); // Parameter can be used as a toggle flag (3)
-			}
-			appendUnderlinedFormal(result, description);
-			if (description.defaultValueWhenFlag().isPresent()) {
-				result.append("]"); // (close 3)
-			}
-			if (description.defaultValue().isPresent()) {
+            if (!formalEmpty) {
+                if (description.defaultValueWhenFlag().isPresent()) {
+                    result.append("["); // Parameter can be used as a toggle
+                                        // flag (3)
+                }
+                appendUnderlinedFormal(result, description);
+                if (description.defaultValueWhenFlag().isPresent()) {
+                    result.append("]"); // (close 3)
+                }
+            }
+			if (description.defaultValue().isPresent() && !formalEmpty) {
 				result.append("]"); // (close 1)
 			}
 			result.append("  "); // two spaces between each param for better legibility
