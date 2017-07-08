@@ -52,6 +52,11 @@ public class Remote {
 
 	}
 	
+	@ShellMethod(help = "shutdown with force boolean param")
+	public void shutdownForce(@ShellOption boolean force) {
+
+	}
+	
 	@ShellMethod(help = "a different prefix", prefix = "-")
 	public void prefixTest(@ShellOption String message) {
 

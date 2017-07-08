@@ -16,7 +16,13 @@
 
 package org.springframework.shell2.standard;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.util.ReflectionUtils.findMethod;
+
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,18 +31,12 @@ import org.jline.reader.impl.DefaultParser;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.shell2.CompletionContext;
 import org.springframework.shell2.CompletionProposal;
 import org.springframework.shell2.ParameterMissingResolutionException;
 import org.springframework.shell2.UnfinishedParameterResolutionException;
 import org.springframework.shell2.Utils;
-
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.util.ReflectionUtils.findMethod;
 
 /**
  * Unit tests for DefaultParameterResolver.
@@ -83,6 +83,26 @@ public class StandardParameterResolverTest {
 				Utils.createMethodParameter(method, 0),
 				asList("-message abc".split(" "))
 		)).isEqualTo("abc");
+	}
+	
+	@Test
+	public void testParsesBooleanWithArityZeroAndNoKeyProvided() throws Exception {
+		Method method = findMethod(Remote.class, "shutdownForce", boolean.class);
+
+		assertThat(resolver.resolve(
+				Utils.createMethodParameter(method, 0),
+				new ArrayList<>()
+		)).isEqualTo(false);
+	}
+	
+	@Test
+	public void testParsesBooleanWithArityZeroAndKeyProvided() throws Exception {
+		Method method = findMethod(Remote.class, "shutdownForce", boolean.class);
+
+		assertThat(resolver.resolve(
+				Utils.createMethodParameter(method, 0),
+				asList("--force".split(" "))
+		)).isEqualTo(true);
 	}
 
 	@Test

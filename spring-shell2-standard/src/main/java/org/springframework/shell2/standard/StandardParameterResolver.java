@@ -175,8 +175,13 @@ public class StandardParameterResolver implements ParameterResolver {
 					offset += arity;
 				} // No more input. Try defaultValues
 				else {
-					Optional<String> defaultValue = defaultValueFor(parameter);
-					defaultValue.ifPresent(value -> result.put(parameter, ParameterRawValue.implicit(value, null)));
+					if (arity == 0) {
+						boolean defaultValue = booleanDefaultValue(parameter);
+						result.put(parameter, ParameterRawValue.implicit(String.valueOf(defaultValue), null));
+					} else {
+						Optional<String> defaultValue = defaultValueFor(parameter);
+						defaultValue.ifPresent(value -> result.put(parameter, ParameterRawValue.implicit(value, null)));
+					}
 				}
 			}
 			else if (copy.size() > 1) {
